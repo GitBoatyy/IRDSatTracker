@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Satellite Tracking Application</title>
+    <!-- Link to your CSS file -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Meta tags for responsiveness -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+    <!-- Header Bar -->
+    <header>
+        <a href="https://skytrac.ca/" target="_blank">
+            <!-- Your SVG Logo -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 756 174">
+                <style type="text/css">
+                    .st0{fill:#253746;}
+                </style>
+                <g>
+                    <g>
+                        <g>
+                            <path class="st0" d="M134.9,21.8v135.3h-18.7V21.8H134.9z M141.3,89.3l46.2-67.6h21.6l-46.2,67.6l46.3,67.7h-21.6L141.3,89.3z"></path>
+                        </g>
+                    </g>
+                    <path class="st0" d="M452.9,89.4h22.5c16,0,23.9-12.4,23.9-24.1c0-11.6-7.9-23.8-23.9-23.9h-29.1v115.7h-18.8V21.8h47.9   c28.6,0,42.9,22.1,42.9,43.5c0,19.1-9.8,36.6-33.7,40.4l33.9,51.4h-21.6L452.9,89.4z"></path>
+                    <path class="st0" d="M650.1,40.7c11.2-12.3,26.9-20.4,44.3-20.4c25.4,0,45.8,14.5,55.6,38.5h-20c-8.1-12.8-20.8-19-35.7-19   c-12.3,0-22.6,5.7-30.7,14.7c-8,9-13.2,21.1-13.2,35.2c0,13.7,5.1,25.8,13.2,34.8c8,9,18.4,14.7,30.7,14.7   c14.8,0,27.8-7.2,35.8-18.9l20.2,0c-10.4,23.4-30.6,38.5-56.1,38.5c-17.4,0-33.1-7.8-44.3-20.4c-11-12.5-18.3-29.8-18.3-48.7   C631.8,70.4,639.1,53.2,650.1,40.7z"></path>
+                    <path class="st0" d="M607.3,120.1h-55.1l-14.5,37h-19.2l53.3-135.3h16.1l53.3,135.3h-19.2L607.3,120.1z M559.3,102.1h40.9l-20.5-52   L559.3,102.1z"></path>
+                    <g>
+                        <polygon class="st0" points="331.2,21.8 319.3,41.4 353.4,41.4 353.4,157.1 372.3,157.1 372.3,41.4 419,41.4 419,21.8   "></polygon>
+                    </g>
+                    <path class="st0" d="M79.9,58.8C79,45.2,66.1,39.7,54.5,39.7c-12.1,0-29.2,6.5-29.2,21.1c0,15.8,17.8,17.6,32,18.9   c18.2,2.3,46.8,7.3,46.8,37.9c0,26.2-25.4,41.4-49.3,41.4c-21.2,0-47.7-14.2-47.7-38.9h19.3c0.8,12.3,15.6,19.4,29.6,19.4   c14.2,0,28.8-8.9,28.8-21.7c0-17.5-17.7-16.8-36.3-19.3C31.6,96.2,6.2,90.3,6.2,60.8c0-22.9,21.9-40.3,49.2-40.3   c20.5,0,41.4,10.7,43.5,38.3H79.9z"></path>
+                    <path class="st0" d="M265,81.1l36.2-59.3h21.6l-48.2,79.1v56.1h-19.1v-56.1l-46.3-79.1h21.6L265,81.1z"></path>
+                </g>
+            </svg>
+        </a>
+    </header>
+
+    <!-- Main Content -->
+    <div id="map"></div>
+    <!-- Satellite List Container -->
+    <div id="satellite-list"></div>
+    <!-- Satellite Info Container -->
+    <div id="satellite-info"></div>
+
+    <!-- Controls Container -->
+    <div id="controls">
+        <button id="current-location-btn">Use Current Location</button>
+
+        <!-- Toggle Coverage Lines -->
+        <div id="coverage-toggle">
+            <input type="checkbox" id="toggle-coverage-checkbox" checked>
+            <label for="toggle-coverage-checkbox">Show Coverage Lines</label>
+        </div>
+
+        <!-- Toggle Spare Satellites -->
+        <div id="spares-toggle">
+            <input type="checkbox" id="toggle-spares-checkbox">
+            <label for="toggle-spares-checkbox">Show Spare Satellites</label>
+        </div>
+
+        <!-- Toggle Coverage Circles -->
+        <div id="coverage-circles-toggle">
+            <input type="checkbox" id="toggle-coverage-circles-checkbox" checked>
+            <label for="toggle-coverage-circles-checkbox">Show Coverage Circles</label>
+        </div>
+    </div>
+    <!-- ... your other <head> content ... -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Satellite.js remains -->
+    <script src="https://unpkg.com/satellite.js@4.0.0/dist/satellite.min.js"></script>
+    <!-- Your custom app.js remains -->
+    <script src="app.js"></script>
+</body>
+</html>
