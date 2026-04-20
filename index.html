@@ -66,6 +66,42 @@
             <input type="checkbox" id="toggle-coverage-circles-checkbox" checked>
             <label for="toggle-coverage-circles-checkbox">Show Coverage Circles</label>
         </div>
+
+        <div id="sv-id-toggle">
+            <input type="checkbox" id="toggle-sv-id-checkbox">
+            <label for="toggle-sv-id-checkbox">Show SV ID Labels</label>
+        </div>
+
+        <div id="terrain-mask-toggle">
+            <input type="checkbox" id="toggle-terrain-mask-checkbox" checked>
+            <label for="toggle-terrain-mask-checkbox">Show Terrain Mask</label>
+        </div>
+
+        <div id="terrain-status" aria-live="polite"></div>
+    </div>
+
+    <div id="timeline-dock">
+        <div id="timeline-inputs">
+            <div class="timeline-field">
+                <label for="utc-date-input">UTC Date</label>
+                <input type="date" id="utc-date-input">
+            </div>
+            <div class="timeline-field">
+                <label for="utc-time-input">UTC Time</label>
+                <input type="time" id="utc-time-input" step="1">
+            </div>
+            <div id="timeline-actions">
+                <button id="playback-toggle-btn" type="button">Play</button>
+                <button id="live-time-btn" type="button">Return to Live</button>
+            </div>
+        </div>
+        <div id="timeline-controls">
+            <div id="timeline-label-row">
+                <label for="time-slider">UTC Timeline</label>
+                <div id="timeline-readout">Live</div>
+            </div>
+            <input type="range" id="time-slider">
+        </div>
     </div>
     <!-- ... your other <head> content ... -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>

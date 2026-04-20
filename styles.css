@@ -1,122 +1,27 @@
-/* styles.css */
-
-/* Ensure the map fills the entire viewport */
-html, body {
+html,
+body {
     height: 100%;
     margin: 0;
     padding: 0;
 }
+
+body {
+    --header-height: 70px;
+    --timeline-dock-height: 140px;
+    overflow: hidden;
+}
+
 .leaflet-marker-icon {
     cursor: pointer;
 }
 
-/* Full-screen map */
-#map {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-/* Cursor change for markers */
-.gm-style div[title] {
-    cursor: pointer;
-}
-
-/* Position the controls in the top-left corner */
-#controls {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 1000; /* Ensure it appears above the map */
-    background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-/* Style the controls inside */
-#controls > * {
-    display: block;
-    margin-bottom: 10px;
-}
-
-/* Remove margin from the last child */
-#controls > *:last-child {
-    margin-bottom: 0;
-}
-
-/* Style the labels */
-#controls label {
-    margin-left: 5px;
-}
-
-/* Style the checkboxes and buttons */
-#controls input[type="checkbox"] {
-    vertical-align: middle;
-}
-
-#controls button {
-    display: block;
-    width: 100%;
-    padding: 8px;
-    font-size: 14px;
-    cursor: pointer;
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-/* Hover effect for the button */
-#controls button:hover {
-    background-color: #f0f0f0;
-}
-
-/* Satellite List Container */
-#satellite-list {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    z-index: 1000;
-    background-color: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border: 1px solid #ccc;
-    max-width: 200px;
-    max-height: 150px;
-    overflow-y: auto;
-    font-size: 14px;
-    border-radius: 4px;
-}
-
-/* Satellite Info Container */
-#satellite-info {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    z-index: 1000;
-    background-color: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border: 1px solid #ccc;
-    max-width: 250px;
-    max-height: 200px;
-    overflow-y: auto;
-    font-size: 14px;
-    border-radius: 4px;
-}
-
-/* Box shadow for satellite containers */
-#satellite-list, #satellite-info {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-/* Header Styles */
 header {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     background-color: white;
-    z-index: 1000; /* Ensure the header is above other elements */
+    z-index: 1000;
     padding: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -127,61 +32,285 @@ header a {
 }
 
 header svg {
-    height: 50px; /* Adjust as needed */
+    height: 50px;
     width: auto;
-}
-
-/* Adjust the map and other elements to account for the header height */
-body {
-    margin: 0;
-    padding: 0;
 }
 
 #map {
     position: absolute;
-    top: 70px; /* Adjust this value to match the header height */
+    top: var(--header-height);
     left: 0;
     width: 100%;
-    height: calc(100% - 70px); /* Subtract the header height */
+    height: calc(100% - var(--header-height));
 }
 
-/* Position the controls */
+#controls,
+#timeline-dock,
+#satellite-list,
+#satellite-info {
+    z-index: 1000;
+    background-color: rgba(255, 255, 255, 0.92);
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
 #controls {
     position: absolute;
-    top: 80px; /* Adjust this value to be below the header */
+    top: calc(var(--header-height) + 10px);
     left: 10px;
-    z-index: 1000;
-    background-color: rgba(255, 255, 255, 0.8);
+    width: 250px;
     padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Satellite List and Info Containers */
-#satellite-list, #satellite-info {
-    position: absolute;
-    bottom: 14px;
-    z-index: 1000;
-    background-color: rgba(255, 255, 255, 0.9);
-    padding: 10px;
+#controls > * + * {
+    margin-top: 10px;
+}
+
+#controls label {
+    margin-left: 5px;
+}
+
+#controls input[type="checkbox"] {
+    vertical-align: middle;
+}
+
+#terrain-status {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: #f4f6f7;
+    border: 1px solid #d9e0e3;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+#terrain-status[data-state="loading"] {
+    background: #fff7ed;
+    border-color: #fdba74;
+}
+
+#terrain-status[data-state="ready"] {
+    background: #ecfdf5;
+    border-color: #86efac;
+}
+
+#terrain-status[data-state="error"] {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+button,
+input,
+label {
+    font: inherit;
+}
+
+#controls button,
+#timeline-dock button,
+#timeline-dock input {
+    box-sizing: border-box;
+}
+
+#controls button,
+#timeline-dock button {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: white;
     border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#controls button:hover,
+#timeline-dock button:hover {
+    background-color: #f0f0f0;
+}
+
+#controls button:disabled,
+#timeline-dock button:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+#timeline-dock {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    padding: 12px 14px;
+}
+
+#timeline-inputs {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+#timeline-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+#timeline-actions button {
+    width: 180px;
+}
+
+.timeline-field {
+    min-width: 180px;
+}
+
+.timeline-field label,
+#timeline-label-row label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.timeline-field input {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+}
+
+#timeline-controls {
+    width: 100%;
+}
+
+#timeline-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+#timeline-readout {
+    font-size: 13px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+#time-slider {
+    width: 100%;
+    margin: 0;
+}
+
+#satellite-list,
+#satellite-info {
+    position: absolute;
+    bottom: calc(var(--timeline-dock-height) + 20px);
+    padding: 10px;
     max-width: 250px;
-    max-height: 200px;
+    max-height: 220px;
     overflow-y: auto;
     font-size: 14px;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 #satellite-list {
-    right: 55px;
+    right: 10px;
 }
 
 #satellite-info {
     left: 10px;
 }
 
-/* Ensure the map fills the viewport */
-html, body {
-    height: 100%;
+.satellite-section + .satellite-section {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #d1d5db;
+}
+
+.satellite-section h4 {
+    margin: 0 0 6px;
+    font-size: 13px;
+}
+
+.satellite-section ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+@media (max-width: 900px) {
+    body {
+        --timeline-dock-height: 185px;
+    }
+
+    #controls {
+        width: auto;
+        right: 10px;
+    }
+
+    #timeline-inputs {
+        flex-wrap: wrap;
+    }
+
+    .timeline-field {
+        flex: 1 1 180px;
+    }
+
+    #timeline-actions {
+        flex: 1 1 100%;
+        margin-left: 0;
+    }
+
+    #timeline-actions button {
+        flex: 1 1 180px;
+        width: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        --timeline-dock-height: 225px;
+    }
+
+    #controls {
+        top: calc(var(--header-height) + 10px);
+        left: 10px;
+        right: 10px;
+        width: auto;
+    }
+
+    #timeline-dock {
+        left: 10px;
+        right: 10px;
+    }
+
+    #timeline-inputs {
+        gap: 10px;
+    }
+
+    #timeline-label-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    #timeline-readout {
+        text-align: left;
+        white-space: normal;
+    }
+
+    #satellite-list,
+    #satellite-info {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+    }
+
+    #satellite-list {
+        bottom: calc(var(--timeline-dock-height) + 20px);
+    }
+
+    #satellite-info {
+        bottom: calc(var(--timeline-dock-height) + 190px);
+    }
 }

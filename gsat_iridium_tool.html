@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+
+<html lang="en" dir="ltr"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dc="http://purl.org/dc/terms/"
+  xmlns:foaf="http://xmlns.com/foaf/0.1/"
+  xmlns:og="http://ogp.me/ns#"
+  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+  xmlns:sioc="http://rdfs.org/sioc/ns#"
+  xmlns:sioct="http://rdfs.org/sioc/types#"
+  xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!--[if IE]><![endif]-->
+<link rel="dns-prefetch" href="//ajax.googleapis.com" />
+<link rel="preconnect" href="//ajax.googleapis.com" />
+<link rel="dns-prefetch" href="//code.jquery.com" />
+<link rel="preconnect" href="//code.jquery.com" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="shortcut icon" href="https://support.gsat.us/sites/all/themes/boson/favicon.ico" type="image/vnd.microsoft.icon" />
+<meta name="description" content="How to use this tool This tool allows you to monitor the Iridium satellite network and determine which satellite is closest to your location. There are 2 methods to determine your location: OPTION 1: Web based location Your location is based on the IP address assigned to you when you browse the internet. By viewing this page with a web browser and allowing geolocation" />
+<meta name="keywords" content="iridium, inmarsat, thuraya, mcg-101, micro, gsatmicro, satcollect, gps tracking, satellite tracking, engineering, telecommunications" />
+<meta name="robots" content="follow, index, noarchive, noimageindex" />
+<meta name="rating" content="general" />
+<meta name="generator" content="Drupal 7 (http://drupal.org)" />
+<link rel="image_src" href="http://gsat.us/sites/all/themes/boson/logo.png" />
+<link rel="canonical" href="https://support.gsat.us/tools/iridium-satellite-location-map-tool" />
+<link rel="shortlink" href="https://support.gsat.us/node/241" />
+<meta name="geo.position" content="26.097709;-80.141944" />
+<meta name="geo.region" content="US-FL" />
+<meta name="icbm" content="26.097709;-80.141944" />
+<title>Iridium Satellite Location Map Tool | GSE Support</title>
+
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:site" content="@GSatUS" />
+<meta name="twitter:title" content="Iridium Satellite Location Map Tool | GSE Support" />
+
+
+<script type="application/ld+json">
+{ "@context" : "https://schema.org",
+  "@type" : "Organization",
+      "url": "https://www.gsat.us",
+      "logo": "https://www.gsat.us/sites/all/themes/boson/logo.png",
+	  "contactPoint" : [
+		{ "@type" : "ContactPoint",
+		  "telephone" : "+1-954-459-4000",
+		  "contactType" : "customer service"
+    	} ],
+	  "sameAs" : [ "https://www.facebook.com/GSatEng",
+		"https://twitter.com/GSatUS",
+		"https://www.linkedin.com/company/global-satellite-engineering"] 
+}
+</script>
+<link href="https://www.gsat.us/images/branding/apple-touch-icon.png" rel="apple-touch-icon" />
+<link href="https://www.gsat.us/images/branding/apple-touch-icon-76x76.png" rel="apple-touch-icon" sizes="76x76" />
+<link href="https://www.gsat.us/images/branding/apple-touch-icon-120x120.png" rel="apple-touch-icon" sizes="120x120" />
+<link href="https://www.gsat.us/images/branding/apple-touch-icon-152x152.png" rel="apple-touch-icon" sizes="152x152" />
+<link href="https://www.gsat.us/images/branding/apple-touch-icon-180x180.png" rel="apple-touch-icon" sizes="180x180" />
+<link href="https://www.gsat.us/images/branding/icon-hires.png" rel="icon" sizes="192x192" />
+<link href="https://www.gsat.us/images/branding/icon-normal.png" rel="icon" sizes="128x128" />
+<link type="text/css" rel="stylesheet" href="/sites/default/files/advagg_css/css__4CrVxOjESviqF5FtV6Xit3YmqyUAh4s-E51iklJIrvU__ZeNiuy6gf4Ndl-jKo830rLeqMJ4QLclAktCyeqkieZw__CmfFcSykcnUzno85rpOXhvi6-sC-JsiBbPNn53c9taI.css" media="all" />
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script>
+<!--//--><![CDATA[//><!--
+window.jQuery || document.write("<script src='/sites/all/modules/jquery_update/replace/jquery/1.12/jquery.min.js'>\x3C/script>")
+//--><!]]>
+</script>
+<script>
+<!--//--><![CDATA[//><!--
+jQuery.migrateMute=true;jQuery.migrateTrace=false;
+//--><!]]>
+</script>
+<script src="//code.jquery.com/jquery-migrate-1.4.1.min.js"></script>
+<script>
+<!--//--><![CDATA[//><!--
+window.jQuery && window.jQuery.migrateWarnings || document.write("<script src='/sites/all/modules/jquery_update/replace/jquery-migrate/1.4.1/jquery-migrate.min.js'>\x3C/script>")
+//--><!]]>
+</script>
+<script src="/sites/default/files/advagg_js/js__UuwcVk6_ic7nH6jUTeblI1JljZVCdDX7H3oe9mL1Ruk__oVZZ-cccoXfVT68C3oOkIcsQOi2ZYkJETpwEwh2OG3k__CmfFcSykcnUzno85rpOXhvi6-sC-JsiBbPNn53c9taI.js"></script>
+<script>
+<!--//--><![CDATA[//><!--
+jQuery.extend(Drupal.settings,{"basePath":"\/","pathPrefix":"","setHasJsCookie":0,"ajaxPageState":{"theme":"boson","theme_token":"KYjWzs5Xmh1xmoDbofuvH31f7rJMn0vDRxW4WSseNyg","css":{"modules\/system\/system.base.css":1,"modules\/system\/system.menus.css":1,"modules\/system\/system.messages.css":1,"modules\/system\/system.theme.css":1,"modules\/aggregator\/aggregator.css":1,"sites\/all\/modules\/domain\/domain_nav\/domain_nav.css":1,"modules\/field\/theme\/field.css":1,"modules\/node\/node.css":1,"modules\/search\/search.css":1,"sites\/all\/modules\/ubercart\/uc_order\/uc_order.css":1,"sites\/all\/modules\/ubercart\/uc_product\/uc_product.css":1,"sites\/all\/modules\/ubercart\/uc_store\/uc_store.css":1,"modules\/user\/user.css":1,"sites\/all\/modules\/views\/css\/views.css":1,"sites\/all\/modules\/colorbox\/styles\/plain\/colorbox_style.css":1,"sites\/all\/modules\/ctools\/css\/ctools.css":1,"sites\/all\/themes\/boson\/css\/main.css":1,"sites\/all\/themes\/boson\/css\/color-scheme\/blue.css":1,"sites\/all\/libraries\/superfish\/css\/superfish.css":1,"sites\/all\/libraries\/superfish\/style\/boson.css":1,"sites\/all\/themes\/boson\/css\/responsive.css":1,"sites\/all\/themes\/boson\/css\/prettyPhoto.css":1},"js":{"\/\/ajax.googleapis.com\/ajax\/libs\/jquery\/1.12.4\/jquery.min.js":1,"\/\/code.jquery.com\/jquery-migrate-1.4.1.min.js":1,"misc\/jquery-extend-3.4.0.js":1,"misc\/jquery-html-prefilter-3.5.0-backport.js":1,"misc\/jquery.once.js":1,"misc\/drupal.js":1,"sites\/all\/modules\/jquery_update\/js\/jquery_browser.js":1,"misc\/form-single-submit.js":1,"sites\/all\/modules\/entityreference\/js\/entityreference.js":1,"sites\/all\/libraries\/colorbox\/jquery.colorbox-min.js":1,"sites\/all\/libraries\/DOMPurify\/purify.min.js":1,"sites\/all\/modules\/colorbox\/js\/colorbox.js":1,"sites\/all\/modules\/colorbox\/styles\/plain\/colorbox_style.js":1,"sites\/all\/libraries\/superfish\/jquery.bgiframe.min.js":1,"sites\/all\/libraries\/superfish\/jquery.hoverIntent.minified.js":1,"sites\/all\/libraries\/superfish\/sftouchscreen.js":1,"sites\/all\/libraries\/superfish\/sfsmallscreen.js":1,"sites\/all\/libraries\/superfish\/supposition.js":1,"sites\/all\/libraries\/superfish\/superfish.js":1,"sites\/all\/libraries\/superfish\/supersubs.js":1,"sites\/all\/modules\/superfish\/superfish.js":1,"sites\/all\/themes\/boson\/js\/jquery.prettyPhoto.js":1,"sites\/all\/themes\/boson\/js\/main.js":1}},"colorbox":{"opacity":"0.85","current":"{current} of {total}","previous":"\u00ab Prev","next":"Next \u00bb","close":"Close","maxWidth":"98%","maxHeight":"98%","fixed":true,"mobiledetect":true,"mobiledevicewidth":"480px","file_public_path":"\/sites\/default\/files","specificPagesDefaultValue":"admin*\nimagebrowser*\nimg_assist*\nimce*\nnode\/add\/*\nnode\/*\/edit\nprint\/*\nprintpdf\/*\nsystem\/ajax\nsystem\/ajax\/*"},"inEffects":["bounceIn","bounceInDown","bounceInUp","bounceInLeft","bounceInRight","fadeIn","fadeInUp","fadeInDown","fadeInLeft","fadeInRight","fadeInUpBig","fadeInDownBig","fadeInLeftBig","fadeInRightBig","flipInX","flipInY","foolishIn","lightSpeedIn","puffIn","rollIn","rotateIn","rotateInDownLeft","rotateInDownRight","rotateInUpLeft","rotateInUpRight","twisterInDown","twisterInUp","swap","swashIn","tinRightIn","tinLeftIn","tinUpIn","tinDownIn","vanishIn"],"outEffects":["bombRightOut","bombLeftOut","bounceOut","bounceOutDown","bounceOutUp","bounceOutLeft","bounceOutRight","fadeOut","fadeOutUp","fadeOutDown","fadeOutLeft","fadeOutRight","fadeOutUpBig","fadeOutDownBig","fadeOutLeftBig","fadeOutRightBig","flipOutX","flipOutY","foolishOut","hinge","holeOut","lightSpeedOut","puffOut","rollOut","rotateOut","rotateOutDownLeft","rotateOutDownRight","rotateOutUpLeft","rotateOutUpRight","rotateDown","rotateUp","rotateLeft","rotateRight","swashOut","tinRightOut","tinLeftOut","tinUpOut","tinDownOut","vanishOut"],"better_exposed_filters":{"views":{"blog_2":{"displays":{"block_3":{"filters":[]}}}}},"superfish":[{"id":"3","sf":{"pathLevels":"0","animation":{"opacity":"show"},"speed":"\u0027fast\u0027","autoArrows":false,"dropShadows":false,"disableHI":false},"plugins":{"smallscreen":{"mode":"window_width","addSelected":false,"menuClasses":false,"hyperlinkClasses":false,"title":"GSE Network"},"supposition":true,"bgiframe":true,"supersubs":{"minWidth":"12","maxWidth":"27","extraWidth":1}}},{"id":"8","sf":{"delay":"100","animation":{"opacity":"show","height":"show"},"speed":"\u0027fast\u0027","autoArrows":false,"dropShadows":false,"disableHI":false},"plugins":{"touchscreen":{"mode":"always_active"},"smallscreen":{"mode":"window_width","addSelected":false,"menuClasses":false,"hyperlinkClasses":false,"includeClass_menu":"sf-select","title":"Menu"},"supposition":true,"bgiframe":false,"supersubs":{"minWidth":"12","maxWidth":"27","extraWidth":1}}}],"urlIsAjaxTrusted":{"\/tools\/iridium-satellite-location-map-tool":true}});
+//--><!]]>
+</script>
+
+<!-- JS: FontAwesome Kit -->
+<script src="https://kit.fontawesome.com/f3f3b9dda6.js"></script>
+<!-- END: js -->
+</head>
+<body class="html not-front not-logged-in no-sidebars page-node page-node- page-node-241 node-type-page domain-support-gsat-us none" style="background-color:#f6f6f6;">
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PSXMF4N"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+    <div class="mainboxed-none none">
+		<div class="b-top-bar">
+		<div class="layout">
+			<!-- Some text -->
+			<div class="wrap-left">
+								  <div class="region region-top-left">
+    <div id="block-superfish-3" class="block block-superfish">
+
+    
+  <div class="content">
+    <ul id="superfish-3" class="menu sf-menu sf-menu-gse-network---expanded sf-horizontal sf-style-none sf-total-items-8 sf-parent-items-0 sf-single-items-8"><li id="menu-12591-3" class="first odd sf-item-1 sf-depth-1 sf-no-children"><a href="/" title="" class="sf-depth-1">Home</a></li><li id="menu-1640-3" class="middle even sf-item-2 sf-depth-1 sf-no-children"><a href="https://www.gsat.us" title="" class="sf-depth-1">GSE</a></li><li id="menu-1641-3" class="middle odd sf-item-3 sf-depth-1 sf-no-children"><a href="https://static.gsattrack.com" title="" class="sf-depth-1">GSatTrack</a></li><li id="menu-1642-3" class="middle even sf-item-4 sf-depth-1 sf-no-children"><a href="https://www.gsatmicro.com" title="" class="sf-depth-1">GSatMicro</a></li><li id="menu-27945-3" class="middle odd sf-item-5 sf-depth-1 sf-no-children"><a href="https://www.gsatsolar.com" title="" class="sf-depth-1">GSatSolar</a></li><li id="menu-1644-3" class="middle even sf-item-6 sf-depth-1 sf-no-children"><a href="https://www.satcollect.com" title="" class="sf-depth-1">SatCollect</a></li><li id="menu-1645-3" class="middle odd sf-item-7 sf-depth-1 sf-no-children"><a href="https://shop.gsat.us" title="" class="sf-depth-1">Shop</a></li><li id="menu-4182-3" class="last even sf-item-8 sf-depth-1 sf-no-children"><a href="/user?current=node/241" title="" class="sf-depth-1">Admin</a></li></ul>  </div>
+</div>
+  </div>
+				
+			</div>
+			<div class="wrap-right">
+								  <div class="region region-top-right">
+    <div id="block-block-2" class="block block-block">
+
+    
+  <div class="content">
+    <span class="top-bar-phone"><span class="icon-phone"></span> 1.954.459.4000</span>
+<div class="top-bar-social">
+	<a class="lin" href="https://www.linkedin.com/company/global-satellite-engineering" rel="noopener noreferrer" target="blank"><i class="icon-linkedin"></i><span style="display:none;">LinkedIn</span></a>
+	<a class="fb" href="https://www.facebook.com/GSatEng" rel="noopener noreferrer" target="blank"><i class="icon-facebook"></i><span style="display:none;">Facebook</span></a>
+	<a class="tw" href="https://www.twitter.com/GSatUS" rel="noopener noreferrer" target="blank"><i class="icon-twitter"></i><span style="display:none;">Twitter</span></a>
+	<a class="yt" href="https://www.youtube.com/channel/UCJPhZM0YhPRIQlQp2Q9leSQ" rel="noopener noreferrer" target="blank"><i class="icon-youtube"></i><span style="display:none;">Youtube</span></a>
+	<a class="is" href="https://www.instagram.com/social.gse/" rel="noopener noreferrer" target="blank"><i class="icon-instagram"></i><span style="display:none;">Instagram</span></a>
+	<a class="rss" href="https://www.gsat.us/rss.xml" rel="noopener noreferrer" target="blank"><i class="icon-rss"></i><span style="display:none;">RSS</span></a>
+</div>  </div>
+</div>
+  </div>
+				
+			</div>
+		</div>
+	</div>
+		<div class="header">
+		<div class="layout clearfix">
+			<div class="mob-layout wrap-left">
+
+				<div class="brand">
+															<div class="logo-img">
+						<a href="/"><img src="https://support.gsat.us/images/branding/logo_gsat.png" alt="GSE Logo - Home" /></a>
+					</div>
+					
+				</div>
+				  <div class="region region-main-menu">
+    <div id="block-superfish-8" class="block block-superfish b_sf_main_menu">
+
+    
+  <div class="content">
+    <ul id="superfish-8" class="menu sf-menu sf-menu-gse-support sf-horizontal sf-style-boson sf-total-items-2 sf-parent-items-0 sf-single-items-2"><li id="menu-31321-8" class="first odd sf-item-1 sf-depth-1 sf-no-children"><a href="https://helpdesk.gsat.us/" title="" class="sf-depth-1">Helpdesk</a></li><li id="menu-31227-8" class="last even sf-item-2 sf-depth-1 sf-no-children"><a href="/contact" title="" class="sf-depth-1">Contact Us</a></li></ul>  </div>
+</div>
+  </div>
+
+			</div>
+						<div class="b-search-form">
+
+				<div class="input-wrap">
+
+					  <div class="region region-search-box">
+    <div id="block-search-form" class="block block-search equal pull-right ml-4">
+
+    
+  <div class="content">
+    <form action="/tools/iridium-satellite-location-map-tool" method="post" id="search-block-form" accept-charset="UTF-8"><div>
+<div class="container-inline">
+<i class="icon-search"></i>
+<div class="form-item form-type-textfield form-item-search-block-form">
+  <label class="element-invisible" for="edit-search-block-form--2">Search </label>
+ <input title="Enter the terms you wish to search for." type="text" id="edit-search-block-form--2" name="search_block_form" value="Search.." onblur="setTimeout('closeResults()',2000); if (this.value == '') {this.value = '';}"  onfocus="if (this.value == 'Search..') {this.value = '';}"  size="15" maxlength="128" class="form-text" />
+</div>
+<input type="hidden" name="form_build_id" value="form-mWBaUHYP-1TztvVSn7Vy4keBAKATw0V8yPDoGW5B60Q" />
+<input type="hidden" name="form_id" value="search_block_form" />
+</div></div></form>  </div>
+</div>
+  </div>
+				</div>
+
+			</div>
+			
+
+
+		</div>
+
+
+	</div>
+		<div class="slider clearfix">
+			</div>
+	
+
+	
+	
+
+	
+		<div class="b-titlebar">
+		<div class="layout">
+			<ul class="crumbs">
+
+
+				<h2 class="element-invisible">You are here</h2><ul class="crumbs"><li>You are here:</li> <a href="/">Home</a>  >  Iridium Satellite Location Map Tool</ul>
+			</ul>
+						<h1 class="tb1">
+				Iridium Satellite Location Map Tool&nbsp;</h1>
+		</div>
+	</div>
+			
+	
+	
+	
+
+	
+		<div class="content shortcodes  mid ">
+		<div class="layout" style="padding-bottom: 1px;">
+
+													<div class="dmd">
+						<div class="dd">
+							
+
+
+																					<div class="tabs">
+															</div>
+							
+																					  <div class="region region-content row-all">
+    <div id="block-system-main" class="block block-system">
+
+    
+  <div class="content">
+    <div id="node-241" class="node node-page clearfix" about="/tools/iridium-satellite-location-map-tool" typeof="foaf:Document">
+
+  
+      <span property="dc:title" content="Iridium Satellite Location Map Tool" class="rdf-meta element-hidden"></span>
+  
+  <div class="content">
+    <div class="field field-name-body field-type-text-with-summary field-label-hidden"><div class="field-items"><div class="field-item even" property="content:encoded"><h3>How to use this tool</h3>
+<p>This tool allows you to monitor the Iridium satellite network and determine which satellite is closest to your location. There are 2 methods to determine your location:</p>
+<h5>OPTION 1: Web based location</h5>
+<p>Your location is based on the IP address assigned to you when you browse the internet. By viewing this page with a web browser and allowing geolocation information to be obtained, you can see your current location and the Iridium satellite network coverage area in real-time. A satellite with a green tinted area coverage circle represents the nearest satellite to your location. If you do not see your location on the map, then you have geolocation services deactivated in your browser settings. You may still view the Iridium network, even with disabled geolocation services.</p>
+<h5>OPTION 2: GSatMicro GPS</h5>
+<p>When the GSatMicro is reporting data to GSatTrack (<a href="https://www.gsattrack.com" target="blank" rel="noopener noreferrer">www.gsattrack.com</a>), it will include its current geolocation obtained through the Global Positioning System and relay it to the tracking platform. When you log into your account, you will see the last reported position of the GSatMicro and the Iridium satellite network coverage area in real-time (if you have the "Iridium Satellites" layer selected).</p>
+<h3>Iridium NEXT Satellite Constellation Tracking</h3>
+<div class="row">
+	<div class="row-item col-1_2">
+		<table width="100%" border="0" class="t_satellites">
+		  <tbody>
+			<tr>
+			  <td><span class="t_key t_key_green">&nbsp;</span><span class="t_key_value">Iridium Satellite Closest to your location (green)</span></td>
+			</tr>
+			<!--<tr>
+			  <td><span class="t_key t_key_blue">&nbsp;</span><span class="t_key_value">Iridium Gen-1 Satellite (blue)</span></td>
+			</tr>-->
+			<tr>
+			  <td><span class="t_key t_key_red">&nbsp;</span><span class="t_key_value">Iridium NEXT Satellite - Moving into orbit (red)</span></td>
+			</tr>
+			<tr>
+			  <td><span class="t_key t_key_orange">&nbsp;</span><span class="t_key_value">Iridium NEXT Satellite - Final orbit (orange)</span></td>
+			</tr>
+		  </tbody>
+		</table>
+		<div class="gap" style="height: 30px;"></div>
+	</div>
+	<div class="row-item col-1_2">
+		<p><a href="https://iridium.com/network/iridiumnext" target="blank" rel="noopener noreferrer">About Iridium NEXT</a></p>
+		<p>NOTE: Your browser may zoom in too far if you enable 'browser geolocation'; if this happens, zoom out to see the Iridium NEXT constellation as it orbits the earth.</p>
+		<p>NOTE: This map will continue to update as new Iridium NEXT satellites are launched into orbit.</p>
+	</div>
+</div>
+<iframe src="https://www.gsattrack.com/home/iridiumnextsatellites" width="100%" height="600px"></iframe>
+<p><i class="icon-apple"></i> Safari users may view it here: <a href="https://www.gsattrack.com/home/iridiumnextsatellites" target="blank" rel="noopener noreferrer">View in full window</a></p>
+<hr>
+<!--
+<h3>Iridium Gen-1 Satellite Constellation Tracking</h3>
+<p><a href="https://iridium.com/network/globalnetwork" target="blank">About Iridium Global Network</a></p>
+<iframe src="https://www.gsattrack.com/home/iridiumsatellites" width="100%" height="600px"></iframe>
+<p><i class="icon-apple"></i> Safari users may view it here: <a href="https://www.gsattrack.com/home/iridiumsatellites" target="blank" rel="noopener noreferrer">View in full window</a></p>
+<hr>
+-->
+<h3 class="lined">Learn more about Iridium NEXT</h3>
+<div class="row">
+				<div class="row-item col-1_2">
+					<div class="title">
+						<h5>Iridium NEXT: A Platform for Powerful Capabilities</h5>
+					</div>
+					<div class="element-wrap video-wrap">
+						<iframe width="640" height="360" src="https://www.youtube.com/embed/Ntd1Yp8gg48" frameborder="0" allowfullscreen>
+						</iframe>
+					</div>
+					<div class="gap" style="height: 30px;"></div>
+				</div>
+				<div class="row-item col-1_2">
+					<div class="title">
+						<h5>Iridium NEXT: low-orbit telecommunications constellation</h5>
+					</div>
+					<div class="element-wrap video-wrap">
+						<iframe width="640" height="360" src="https://www.youtube.com/embed/sCEuTSMmFeE" frameborder="0" allowfullscreen>
+						</iframe>
+					</div>
+					<div class="gap" style="height: 30px;"></div>
+				</div>
+			</div></div></div></div>  </div>
+
+  
+  
+</div>
+  </div>
+</div>
+  </div>
+
+
+
+						</div>
+
+						
+
+					</div>
+
+				</div>
+			</div>
+
+			<div class="content" id="prefooter">
+
+				
+
+			</div>
+						<div class="footer" id="footer">
+												<div class="footer-top"></div>
+								<div class="b-widgets">
+					<div class="layout">
+						<div class="row">
+
+							<div class="row-item col-1_4">
+
+																  <div class="region region-footer-firstcolumn">
+    <div id="block-block-50" class="block block-block">
+
+    
+  <div class="content">
+    <p><img alt="Global Satellite Engineering Logo" src="/sites/all/themes/boson/logo.png" style="width: 140px; height: 40px;" /></p>
+  </div>
+</div>
+  </div>
+															</div>
+
+							<div class="row-item col-1_4">
+																  <div class="region region-footer-secondcolumn">
+    <div id="block-views-blog-2-block-3" class="block block-views">
+
+    <h2 class="block-title" >GSE Blog</h2>
+  
+  <div class="content">
+    <div class="view view-blog-2 view-id-blog_2 view-display-id-block_3 post-preview preview-medium view-dom-id-83743112700b56123910d39770eaa36b">
+        
+  
+  
+      <div class="view-content">
+      <div class="item-list">
+  <ul class="views-summary">
+      <li><a href="/community/articles/202604">April 2026</a>
+              (1)
+          </li>
+      <li><a href="/community/articles/202511">November 2025</a>
+              (1)
+          </li>
+      <li><a href="/community/articles/202510">October 2025</a>
+              (1)
+          </li>
+      <li><a href="/community/articles/202508">August 2025</a>
+              (1)
+          </li>
+      <li><a href="/community/articles/202505">May 2025</a>
+              (1)
+          </li>
+      <li><a href="/community/articles/202502">February 2025</a>
+              (1)
+          </li>
+    </ul>
+</div>
+    </div>
+  
+  
+  
+  
+  
+  
+</div>  </div>
+</div>
+  </div>
+								
+							</div>
+
+
+							<div class="row-item col-1_4">
+
+																  <div class="region region-footer-thirdcolumn">
+    <div id="block-block-32" class="block block-block">
+
+    <h2 class="block-title" >Support</h2>
+  
+  <div class="content">
+    <ul class="b-list just-links m-dark">
+<li>
+		<a href="https://www.gsat.us/contact">Contact Us</a></li>
+<li>
+		<a href="https://www.gsat.us/support/documentation">Documentation</a></li>
+<!--<li><p>		<a href="https://www.gsat.us/support/downloads">Downloads</a></li>
+<li>
+		<a href="https://www.gsat.us/support/technical-support">Technical Support</a></li>
+<li>
+		<a href="https://www.gsat.us/support/faq">FAQ</a></li>
+<p>-->
+<li>
+		<a href="https://www.gsattrack.com/wiki/" target="blank" rel="noopener noreferrer">Tracking WIKI</a></li>
+</ul>
+  </div>
+</div>
+<div id="block-block-38" class="block block-block">
+
+    <h2 class="block-title" >News</h2>
+  
+  <div class="content">
+    <ul class="b-list just-links m-dark">
+<li>
+		<a href="https://www.gsat.us/company/news">News Archive</a></li>
+</ul>
+  </div>
+</div>
+  </div>
+								
+							</div>
+
+
+							<div class="row-item col-1_4">
+
+																  <div class="region region-footer-fourthcolumn">
+    <div id="block-block-6" class="block block-block">
+
+    <h2 class="block-title" >About</h2>
+  
+  <div class="content">
+    <ul class="b-list just-links m-dark">
+<li>
+		<a href="https://www.gsat.us/company/about-gse">About Us</a></li>
+<li>
+		<a href="https://www.gsat.us/company/team">Meet Our Team</a></li>
+<li>
+		<a href="https://www.gsat.us/company/careers">Careers</a></li>
+<li>
+		<a href="https://www.gsat.us/privacy-statement">Privacy Statement</a></li>
+<li>
+		<a href="https://www.gsat.us/terms-use">Terms of Use</a></li>
+<li>
+		<a href="/dmca">DMCA Policy</a></li>
+<li>
+		<a href="/warranty-information">Warranty Information</a></li>
+</ul>
+  </div>
+</div>
+  </div>
+															</div>
+
+						</div>
+					</div>
+				</div>
+
+				<div class="b-copyright">
+					<div class="layout">
+						<div class="f-a">
+														  <div class="region region-footer-a">
+    <div id="block-block-4" class="block block-block">
+
+    
+  <div class="content">
+    <div class="footer-bar-social">
+	<a class="lin" href="https://www.linkedin.com/company/global-satellite-engineering" rel="noopener noreferrer" target="blank"><i class="icon-linkedin"></i><span style="display:none;">LinkedIn</span></a>
+	<a class="fb" href="https://www.facebook.com/GSatEng" rel="noopener noreferrer" target="blank"><i class="icon-facebook"></i><span style="display:none;">Facebook</span></a>
+	<a class="tw" href="https://www.twitter.com/GSatUS" rel="noopener noreferrer" target="blank"><i class="icon-twitter"></i><span style="display:none;">Twitter</span></a>
+	<a class="yt" href="https://www.youtube.com/channel/UCJPhZM0YhPRIQlQp2Q9leSQ" rel="noopener noreferrer" target="blank"><i class="icon-youtube"></i><span style="display:none;">Youtube</span></a>
+	<a class="is" href="https://www.instagram.com/social.gse/" rel="noopener noreferrer" target="blank"><i class="icon-instagram"></i><span style="display:none;">Instagram</span></a>
+	<a class="rss" href="https://www.gsat.us/rss.xml" rel="noopener noreferrer" target="blank"><i class="icon-rss"></i><span style="display:none;">RSS</span></a>
+</div>
+<div class="f_copy"><p><span class="copy">Copyright ©  2026 <a href="https://www.gsat.us">Global Satellite Engineering</a>. All Right Reserved.</span></p></div>  </div>
+</div>
+  </div>
+													</div>
+						<div class="f-b">
+							
+						</div>
+					</div>
+				</div>
+							</div>
+			
+
+</div>
+  <script src="https://www.gsat.us/sites/all/themes/boson/js/rrssb.js"></script>
+</body>
+</html>
+

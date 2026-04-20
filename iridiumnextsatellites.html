@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Iridium Satellites</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <script src="/scripts/jquery-3.5.1.min.js"></script>
+    <link rel="stylesheet" href="/content/leaflet.css" />
+    <script src="/scripts/leaflet.js"></script>
+    <script src="/scripts/maplibre-gl.js" nonce="Hc86sm1soPiNeqW5"></script>
+    <link href="/content/maplibre-gl.css" rel="" stylesheet" />
+    <script src="/scripts/leaflet-maplibre-gl.js" nonce="Hc86sm1soPiNeqW5"></script>
+    <link rel="stylesheet" href="/css/satellites.css?v=ridxyGP0D2jgp7bgaitc2nH2HaQ" />
+</head>
+  <body>
+    <div id="map"></div>
+    <script type="text/javascript" nonce="Hc86sm1soPiNeqW5">
+        var data = {
+            satelliteMarkers: [],
+            satelliteCircles: [],
+            satelliteOrbits: [],
+            satelliteIndex: []
+        };
+        var intervals = {
+            satelliteInterval: []
+        };
+
+        var styleOutside = {
+            stroke: true,
+            color: '#FF0000',
+            opacity: 0.25,
+            weight: 2,
+            fillColor: '#FF0000',
+            fillOpacity: 0.15,
+            radius: 2400000
+        };
+
+        var styleInside = {
+            color: '#00FF00',
+            opacity: 0.25,
+            weight: 2,
+            fillColor: '#00FF00',
+            fillOpacity: 0.15,
+            radius: 2400000
+        };
+
+        var styleOperational = {
+        	color: '#ffb400',
+        	opacity: 0.35,
+        	weight: 2,
+        	fillColor: '#ffb400',
+        	fillOpacity: 0.25,
+        	radius: 2400000
+        };
+
+        //var inoperable = [153, 124, 154, 155, 156, 158, 159, 160, 161, 162, 163, 164, 165, 166];
+        var inoperable = [];
+
+        var map = null;
+        var userLocation = null;
+        var baseLayer = null;
+
+        function stopSatelliteOverlay(constellation) {
+            if (data.satelliteMarkers[constellation] != null) {
+                for (var j = 0; j < data.satelliteMarkers[constellation].length; j++) {
+                    var marker = data.satelliteMarkers[constellation][j];
+                    map.removeLayer(marker);
+                }
+                for (var j = 0; j < data.satelliteCircles[constellation].length; j++) {
+                    var marker = data.satelliteCircles[constellation][j];
+                    map.removeLayer(marker);
+                }
+            }
+            clearInterval(intervals.satelliteInterval[constellation]);
+            data.satelliteIndex[constellation] = 0;
+        }
+
+        function nextTelemetryPosition(constellation) {
+            if (data.satelliteIndex[constellation] >= 60) {
+                // it's time to requery
+                stopSatelliteOverlay(constellation);
+                startSatelliteOverlay(constellation);
+                return;
+            }
+
+            var closestSatellite = null;
+            var closestDistance = null;
+            for (var i = 0; i < data.satelliteOrbits[constellation].length; i++) {
+                var sat = data.satelliteOrbits[constellation][i];
+                var pos = sat.Positions[data.satelliteIndex[constellation]];
+                if (pos == null)
+                    continue;
+                var latlng = L.latLng(pos.Lat, pos.Lng).wrap();
+                sat.Marker.setLatLng(latlng);
+                sat.Circle.setLatLng(latlng);
+                var satelliteStyle = styleOutside;
+                var satNum = parseInt(sat.Name.split(' ')[1]);
+                if (inoperable.indexOf(satNum) == -1) {
+                    satelliteStyle = styleOperational;
+                }
+                sat.Circle.setStyle(satelliteStyle);
+
+                if (userLocation != null) {
+                    var distanceMeters = latlng.distanceTo(userLocation);
+                    if ((closestDistance == null) || (distanceMeters < closestDistance)) {
+                        closestDistance = distanceMeters;
+                        closestSatellite = i;
+                    }
+                }
+            }
+
+            if (closestSatellite != null) {
+                var sat = data.satelliteOrbits[constellation][closestSatellite];
+                sat.Circle.setStyle(styleInside);
+            }
+            data.satelliteIndex[constellation]++;
+        }
+
+        function startSatelliteOverlay(constellation) {
+            // map current positions
+            var dataPost = { 'constellation': constellation };
+            jQuery.ajax({
+                type: 'POST',
+                url: '/services/GPSService.asmx/GetSatelliteTelemetry',
+                data: JSON.stringify(dataPost),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function (msg) {
+                    if (msg.d) {
+                        var result = msg.d;
+                        if (result) {
+                            if (result.Success == false) {
+                                return;
+                            }
+                            data.satelliteMarkers[constellation] = [];
+                            data.satelliteCircles[constellation] = [];
+                            data.satelliteOrbits[constellation] = result.Satellites;
+                            data.satelliteIndex[constellation] = 1;
+
+                            // map the current positions
+                            var closestSatellite = null;
+                            var closestDistance = null;
+                            for (var i = 0; i < result.Satellites.length; i++) {
+                                var sat = result.Satellites[i];
+                                var pos = sat.Positions[0];
+                                if (pos == null)
+                                    continue;
+                                var currentAltitude = pos.Alt;
+                                if (pos.Alt < 770) {
+                                    //inop[sat.Name] = pos.Alt;
+                                    inoperable.push(parseInt(sat.Name.split(' ')[1]));
+                                }
+                                var latlng = L.latLng(pos.Lat, pos.Lng).wrap();
+                                var icon = L.icon({
+                                    iconUrl: '/content/images/marker-satellite-small.png',
+                                    iconSize: [20, 20],
+                                    iconAnchor: [10, 10]
+                                });
+                                var tooltip = sat.Name;
+                                if (sat.Description != null) {
+                                    tooltip += " - " + sat.Description;
+                                }
+                                var markerOptions = {
+                                    icon: icon
+                                    //title: tooltip,
+                                };
+
+                                var satelliteMarker = L.marker(latlng, markerOptions).bindTooltip(tooltip).addTo(map);
+                                var satelliteStyle = styleOutside;
+                                var satNum = parseInt(sat.Name.split(' ')[1]);
+                                if (inoperable.indexOf(satNum) == -1) {
+                                    satelliteStyle = styleOperational;
+                                }
+                                var satelliteCircle = L.circle(latlng, 2400000, satelliteStyle).addTo(map);
+
+                                sat.Marker = satelliteMarker;
+                                sat.Circle = satelliteCircle;
+                                data.satelliteMarkers[constellation].push(satelliteMarker);
+                                data.satelliteCircles[constellation].push(satelliteCircle);
+
+                                if (userLocation != null) {
+                                    var distanceMeters = latlng.distanceTo(userLocation);
+                                    if ((closestDistance == null) || (distanceMeters < closestDistance)) {
+                                        closestDistance = distanceMeters;
+                                        closestSatellite = i;
+                                    }
+                                }
+                            }
+
+                            if (closestSatellite != null) {
+                                var sat = data.satelliteOrbits[constellation][closestSatellite];
+                                sat.Circle.setStyle(styleInside);
+                            }
+
+                            // set timeout to show the next
+                            intervals.satelliteInterval[constellation] = setInterval(function () { nextTelemetryPosition(constellation); }, 10000);
+                        }
+                    }
+                },
+                error: function (xhr, status, error) {
+
+                }
+            });
+        }
+
+        function initMap() {
+            map = L.map('map', { attributionControl: false }).setView([0, 0], 2);
+            baseLayer = L.maplibreGL({ style: 'https://tileserver1.protocolparser.com/gselight/style.json' });
+            baseLayer.addTo(map);
+
+            startSatelliteOverlay('IridiumNext');
+
+
+            // Try HTML5 geolocation.
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    var pos = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+
+                    userLocation = new L.latLng(pos.lat, pos.lng).wrap();
+                    //infoWindow.setPosition(pos);
+                    //infoWindow.setContent('You');
+                    var marker = new L.marker(pos, {
+                        title: "You"
+                    }).addTo(map);
+
+                    map.setView(pos, 4);
+                }, function () {
+                    handleLocationError(true, null, map.getCenter());
+                });
+            } else {
+                // Browser doesn't support Geolocation
+                handleLocationError(false, null, map.getCenter());
+            }
+        }
+
+        function handleLocationError(browserHasGeolocation, infoWindow, pos) {
+            //infoWindow.setPosition(pos);
+            //infoWindow.setContent(browserHasGeolocation ?
+            //                      'Error: The Geolocation service failed.' :
+            //                      'Error: Your browser doesn\'t support geolocation.');
+            console.log('geo fail');
+        }
+        jQuery(document).ready(function () {
+            initMap();
+        });
+    </script>
+  </body>
+</html>
