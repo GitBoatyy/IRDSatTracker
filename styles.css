@@ -8,9 +8,9 @@ body {
 body {
     --header-height: 70px;
     --timeline-dock-height: 140px;
-    --panel-tab-size: 36px;
-    --panel-tab-length: 72px;
-    --panel-tab-offset: 18px;
+    --panel-tab-size: 22px;
+    --panel-tab-length: 24px;
+    --panel-tab-offset: 12px;
     overflow: hidden;
 }
 
@@ -83,18 +83,22 @@ header svg {
     width: var(--panel-tab-size);
     height: var(--panel-tab-length);
     padding: 0;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.98);
-    color: #111827;
-    font-size: 18px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #4b5563;
+    font-size: 13px;
+    font-weight: 600;
     line-height: 1;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .panel-collapse-tab:hover {
-    background: #f8fafc;
+    background: rgba(255, 255, 255, 0.98);
+    color: #111827;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
 }
 
 .collapse-edge-left .panel-collapse-tab,
@@ -205,8 +209,24 @@ header svg {
     margin-top: 10px;
 }
 
-#controls .panel-content label {
+#controls .panel-content input[type="checkbox"] + label {
     margin-left: 5px;
+}
+
+.control-field label {
+    display: block;
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.control-field select {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
 }
 
 #controls input[type="checkbox"] {
@@ -247,6 +267,7 @@ label {
 #controls .panel-content button,
 #location-editor .panel-content button,
 #timeline-dock .panel-content button,
+#controls .panel-content select,
 #timeline-dock .panel-content input,
 #location-editor .panel-content input {
     box-sizing: border-box;
@@ -352,13 +373,13 @@ label {
     position: absolute;
     bottom: calc(var(--timeline-dock-height) + 20px);
     padding: 10px;
-    max-width: 250px;
+    max-width: 300px;
 }
 
 #satellite-list-content,
 #satellite-info-content {
     min-width: 180px;
-    max-height: 220px;
+    max-height: 300px;
     overflow-y: auto;
     font-size: 14px;
 }

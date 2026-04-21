@@ -6,6 +6,8 @@ let coverageLines = [];
 let selectedSatellite = null;
 let satelliteRefreshTimer = null;
 let timelinePlaybackTimer = null;
+let baseMapLayers = {};
+let activeBaseMapLayerKey = 'street';
 let timelineBaseTime = Date.now();
 let selectedTimelineStep = 0;
 let isLiveMode = true;
@@ -112,6 +114,7 @@ const TLE_CACHE_AGE_MS = 8 * 60 * 60 * 1000; // 8 hours
 const TLE_BACKGROUND_REFRESH_AGE_MS = 60 * 60 * 1000; // 1 hour
 const TLE_FETCH_TIMEOUT_MS = 15000;
 const TLE_SOURCE_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=tle';
+const BASE_MAP_LAYER_STORAGE_KEY = 'selected_base_map_layer';
 const TIMELINE_STEP_SECONDS = 60;
 const TIMELINE_STEP_MS = TIMELINE_STEP_SECONDS * 1000;
 const TIMELINE_PAST_STEPS = 14 * 24 * 60;
@@ -191,11 +194,11 @@ function getPanelCollapseSymbol(edge, isCollapsed) {
     }
 
     if (edge === 'bottom') {
-        return isCollapsed ? '^' : 'v';
+        return isCollapsed ? '^' : 'V';
     }
 
     if (edge === 'top') {
-        return isCollapsed ? 'v' : '^';
+        return isCollapsed ? 'V' : '^';
     }
 
     return isCollapsed ? '>' : '<';
@@ -497,6 +500,61 @@ function delay(ms) {
     });
 }
 
+function createBaseMapLayers() {
+    return {
+        street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }),
+        topography: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)',
+            maxZoom: 17
+        })
+    };
+}
+
+function getSavedBaseMapLayerKey() {
+    const savedLayerKey = localStorage.getItem(BASE_MAP_LAYER_STORAGE_KEY);
+    return savedLayerKey && baseMapLayers[savedLayerKey] ? savedLayerKey : 'street';
+}
+
+function syncBaseMapSelector() {
+    const baseMapSelect = document.getElementById('base-map-select');
+    if (!baseMapSelect) {
+        return;
+    }
+
+    baseMapSelect.value = activeBaseMapLayerKey;
+}
+
+function setBaseMapLayer(layerKey) {
+    const nextLayerKey = baseMapLayers[layerKey] ? layerKey : 'street';
+
+    Object.values(baseMapLayers).forEach(layer => {
+        if (map.hasLayer(layer)) {
+            map.removeLayer(layer);
+        }
+    });
+
+    baseMapLayers[nextLayerKey].addTo(map);
+    activeBaseMapLayerKey = nextLayerKey;
+    localStorage.setItem(BASE_MAP_LAYER_STORAGE_KEY, nextLayerKey);
+    syncBaseMapSelector();
+}
+
+function initBaseMapSelector() {
+    const baseMapSelect = document.getElementById('base-map-select');
+    if (!baseMapSelect) {
+        return;
+    }
+
+    baseMapSelect.addEventListener('change', (event) => {
+        setBaseMapLayer(event.target.value);
+    });
+
+    syncBaseMapSelector();
+}
+
 function initMap() {
     map = L.map('map', {
         center: [0, 0],
@@ -505,9 +563,9 @@ function initMap() {
         worldCopyJump: true  // Infinite horizontal panning
         // No maxBounds!
     });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    baseMapLayers = createBaseMapLayers();
+    activeBaseMapLayerKey = getSavedBaseMapLayerKey();
+    setBaseMapLayer(activeBaseMapLayerKey);
     terrainMaskLayer = L.layerGroup().addTo(map);
 
     map.on('click', (e) => {
@@ -521,6 +579,7 @@ function initMap() {
 
     initCollapsiblePanels();
     initLocationEditor();
+    initBaseMapSelector();
     document.getElementById('current-location-btn').addEventListener('click', useCurrentLocation);
     document.getElementById('toggle-coverage-checkbox').addEventListener('change', updateCoverageLines);
     document.getElementById('toggle-spares-checkbox').addEventListener('change', updateSatellitePositions);
@@ -1811,7 +1870,7 @@ function displaySatelliteInfo(sat) {
         { label: 'SV ID', value: svMapping && svMapping.svId ? svMapping.svId : 'Spare / Unassigned' },
         { label: 'Orbital Plane', value: svMapping && svMapping.orbitalPlane ? svMapping.orbitalPlane : 'Unknown' },
         {
-            label: 'Shown At (UTC)',
+            label: 'Time',
             value: `${formatUtcDateTime(shownAt)} UTC`
         }
     ];
