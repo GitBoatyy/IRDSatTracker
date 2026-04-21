@@ -41,66 +41,101 @@
     <!-- Main Content -->
     <div id="map"></div>
     <!-- Satellite List Container -->
-    <div id="satellite-list"></div>
+    <div id="satellite-list" class="collapsible-panel" data-collapse-edge="right">
+        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse satellite list"></button>
+        <div id="satellite-list-content" class="panel-content"></div>
+    </div>
     <!-- Satellite Info Container -->
-    <div id="satellite-info"></div>
-
-    <!-- Controls Container -->
-    <div id="controls">
-        <button id="current-location-btn">Use Current Location</button>
-
-        <!-- Toggle Coverage Lines -->
-        <div id="coverage-toggle">
-            <input type="checkbox" id="toggle-coverage-checkbox" checked>
-            <label for="toggle-coverage-checkbox">Show Coverage Lines</label>
-        </div>
-
-        <!-- Toggle Spare Satellites -->
-        <div id="spares-toggle">
-            <input type="checkbox" id="toggle-spares-checkbox">
-            <label for="toggle-spares-checkbox">Show Spare Satellites</label>
-        </div>
-
-        <!-- Toggle Coverage Circles -->
-        <div id="coverage-circles-toggle">
-            <input type="checkbox" id="toggle-coverage-circles-checkbox" checked>
-            <label for="toggle-coverage-circles-checkbox">Show Coverage Circles</label>
-        </div>
-
-        <div id="sv-id-toggle">
-            <input type="checkbox" id="toggle-sv-id-checkbox">
-            <label for="toggle-sv-id-checkbox">Show SV ID Labels</label>
-        </div>
-
-        <div id="terrain-mask-toggle">
-            <input type="checkbox" id="toggle-terrain-mask-checkbox" checked>
-            <label for="toggle-terrain-mask-checkbox">Show Terrain Mask</label>
-        </div>
-
-        <div id="terrain-status" aria-live="polite"></div>
+    <div id="satellite-info" class="collapsible-panel" data-collapse-edge="left">
+        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse satellite details"></button>
+        <div id="satellite-info-content" class="panel-content"></div>
     </div>
 
-    <div id="timeline-dock">
-        <div id="timeline-inputs">
-            <div class="timeline-field">
-                <label for="utc-date-input">UTC Date</label>
-                <input type="date" id="utc-date-input">
+    <!-- Controls Container -->
+    <div id="controls" class="collapsible-panel" data-collapse-edge="left">
+        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse controls"></button>
+        <div class="panel-content">
+            <button id="current-location-btn">Use Current Location</button>
+
+            <!-- Toggle Coverage Lines -->
+            <div id="coverage-toggle">
+                <input type="checkbox" id="toggle-coverage-checkbox" checked>
+                <label for="toggle-coverage-checkbox">Show Coverage Lines</label>
             </div>
-            <div class="timeline-field">
-                <label for="utc-time-input">UTC Time</label>
-                <input type="time" id="utc-time-input" step="1">
+
+            <!-- Toggle Spare Satellites -->
+            <div id="spares-toggle">
+                <input type="checkbox" id="toggle-spares-checkbox">
+                <label for="toggle-spares-checkbox">Show Spare Satellites</label>
             </div>
-            <div id="timeline-actions">
-                <button id="playback-toggle-btn" type="button">Play</button>
-                <button id="live-time-btn" type="button">Return to Live</button>
+
+            <!-- Toggle Coverage Circles -->
+            <div id="coverage-circles-toggle">
+                <input type="checkbox" id="toggle-coverage-circles-checkbox" checked>
+                <label for="toggle-coverage-circles-checkbox">Show Coverage Circles</label>
             </div>
+
+            <div id="sv-id-toggle">
+                <input type="checkbox" id="toggle-sv-id-checkbox">
+                <label for="toggle-sv-id-checkbox">Show SV ID Labels</label>
+            </div>
+
+            <div id="terrain-mask-toggle">
+                <input type="checkbox" id="toggle-terrain-mask-checkbox" checked>
+                <label for="toggle-terrain-mask-checkbox">Show Terrain Mask</label>
+            </div>
+
+            <div id="terrain-status" aria-live="polite"></div>
         </div>
-        <div id="timeline-controls">
-            <div id="timeline-label-row">
-                <label for="time-slider">UTC Timeline</label>
-                <div id="timeline-readout">Live</div>
+    </div>
+
+    <form id="location-editor" class="collapsible-panel" data-collapse-edge="right">
+        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse observer pin editor"></button>
+        <div class="panel-content">
+            <h3>Observer Pin</h3>
+            <div class="location-editor-grid">
+                <label class="location-field" for="location-latitude-input">
+                    <span>Latitude</span>
+                    <input type="number" id="location-latitude-input" step="any" min="-90" max="90" placeholder="49.2827">
+                </label>
+                <label class="location-field" for="location-longitude-input">
+                    <span>Longitude</span>
+                    <input type="number" id="location-longitude-input" step="any" min="-180" max="180" placeholder="-123.1207">
+                </label>
+                <label class="location-field" for="location-altitude-input">
+                    <span>Altitude (m ASL)</span>
+                    <input type="number" id="location-altitude-input" step="any" placeholder="Optional">
+                </label>
             </div>
-            <input type="range" id="time-slider">
+            <button id="location-apply-btn" type="submit">Drop Pin</button>
+            <div id="location-editor-status" aria-live="polite"></div>
+        </div>
+    </form>
+
+    <div id="timeline-dock" class="collapsible-panel" data-collapse-edge="bottom">
+        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse timeline"></button>
+        <div class="panel-content">
+            <div id="timeline-inputs">
+                <div class="timeline-field">
+                    <label for="utc-date-input">UTC Date</label>
+                    <input type="date" id="utc-date-input">
+                </div>
+                <div class="timeline-field">
+                    <label for="utc-time-input">UTC Time</label>
+                    <input type="time" id="utc-time-input" step="1">
+                </div>
+                <div id="timeline-actions">
+                    <button id="playback-toggle-btn" type="button">Play</button>
+                    <button id="live-time-btn" type="button">Return to Live</button>
+                </div>
+            </div>
+            <div id="timeline-controls">
+                <div id="timeline-label-row">
+                    <label for="time-slider">UTC Timeline</label>
+                    <div id="timeline-readout">Live</div>
+                </div>
+                <input type="range" id="time-slider">
+            </div>
         </div>
     </div>
     <!-- ... your other <head> content ... -->

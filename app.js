@@ -9,6 +9,7 @@ let timelinePlaybackTimer = null;
 let timelineBaseTime = Date.now();
 let selectedTimelineStep = 0;
 let isLiveMode = true;
+let isLivePlaybackPaused = false;
 let selectedTimestamp = null;
 let terrainMaskLayer = null;
 let terrainAnalysisRequestId = 0;
@@ -16,6 +17,7 @@ let terrainRefreshDebounceTimer = null;
 let terrainRequestCooldownUntil = 0;
 let terrainProfilePromiseCache = new Map();
 let tleRefreshPromise = null;
+let isLocationEditorDirty = false;
 let terrainProfile = {
     status: 'idle',
     locationKey: null
@@ -117,8 +119,10 @@ const TIMELINE_FUTURE_STEPS = 7 * 24 * 60;
 const PLAYBACK_TICK_MS = 1000;
 const PLAYBACK_ADVANCE_MS = 1000;
 const MAX_COVERAGE_DISTANCE_M = 2400000;
+const COLLAPSE_TAB_VISIBLE_PX = 18;
 const TERRAIN_CACHE_KEY_PREFIX = 'terrain_horizon_profile:';
 const TERRAIN_CACHE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const TERRAIN_CACHE_VERSION = 2;
 const TERRAIN_AZIMUTH_STEP_DEG = 10;
 const TERRAIN_SAMPLE_COUNT = 20;
 const TERRAIN_MAX_DISTANCE_M = 80000;
@@ -169,6 +173,96 @@ function formatDegrees(value, digits = 1) {
     return `${value.toFixed(digits)} deg`;
 }
 
+function formatInputNumber(value, digits = 6) {
+    if (!Number.isFinite(value)) {
+        return '';
+    }
+
+    return value.toFixed(digits).replace(/\.?0+$/, '');
+}
+
+function getPanelContentElement(panelId) {
+    return document.getElementById(`${panelId}-content`) || document.getElementById(panelId);
+}
+
+function getPanelCollapseSymbol(edge, isCollapsed) {
+    if (edge === 'right') {
+        return isCollapsed ? '<' : '>';
+    }
+
+    if (edge === 'bottom') {
+        return isCollapsed ? '^' : 'v';
+    }
+
+    if (edge === 'top') {
+        return isCollapsed ? 'v' : '^';
+    }
+
+    return isCollapsed ? '>' : '<';
+}
+
+function updateCollapsiblePanelButton(panel) {
+    const toggleButton = panel.querySelector('.panel-collapse-tab');
+    if (!toggleButton) {
+        return;
+    }
+
+    const collapseEdge = panel.dataset.collapseEdge || 'left';
+    const isCollapsed = panel.classList.contains('is-collapsed');
+    const panelName = panel.dataset.panelName || panel.id.replace(/-/g, ' ');
+
+    toggleButton.textContent = getPanelCollapseSymbol(collapseEdge, isCollapsed);
+    toggleButton.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    toggleButton.setAttribute('aria-label', `${isCollapsed ? 'Expand' : 'Collapse'} ${panelName}`);
+    toggleButton.title = `${isCollapsed ? 'Expand' : 'Collapse'} ${panelName}`;
+}
+
+function applyCollapsiblePanelState(panel) {
+    const collapseEdge = panel.dataset.collapseEdge || 'left';
+
+    panel.classList.remove('collapse-edge-left', 'collapse-edge-right', 'collapse-edge-top', 'collapse-edge-bottom');
+    panel.classList.add(`collapse-edge-${collapseEdge}`);
+
+    if (!panel.classList.contains('is-collapsed')) {
+        panel.style.transform = '';
+        updateCollapsiblePanelButton(panel);
+        return;
+    }
+
+    if (collapseEdge === 'right') {
+        panel.style.transform = `translateX(calc(100% - ${COLLAPSE_TAB_VISIBLE_PX}px))`;
+    } else if (collapseEdge === 'bottom') {
+        panel.style.transform = `translateY(calc(100% - ${COLLAPSE_TAB_VISIBLE_PX}px))`;
+    } else if (collapseEdge === 'top') {
+        panel.style.transform = `translateY(calc(-100% + ${COLLAPSE_TAB_VISIBLE_PX}px))`;
+    } else {
+        panel.style.transform = `translateX(calc(-100% + ${COLLAPSE_TAB_VISIBLE_PX}px))`;
+    }
+
+    updateCollapsiblePanelButton(panel);
+}
+
+function initCollapsiblePanels() {
+    document.querySelectorAll('.collapsible-panel').forEach(panel => {
+        if (panel.dataset.collapseInit === 'true') {
+            return;
+        }
+
+        panel.dataset.collapseInit = 'true';
+        applyCollapsiblePanelState(panel);
+
+        const toggleButton = panel.querySelector('.panel-collapse-tab');
+        if (!toggleButton) {
+            return;
+        }
+
+        toggleButton.addEventListener('click', () => {
+            panel.classList.toggle('is-collapsed');
+            applyCollapsiblePanelState(panel);
+        });
+    });
+}
+
 function quantizeCoordinate(value, step) {
     return Math.round(value / step) * step;
 }
@@ -185,6 +279,177 @@ function chunkArray(values, chunkSize) {
         chunks.push(values.slice(index, index + chunkSize));
     }
     return chunks;
+}
+
+function getLocationEditorElements() {
+    return {
+        form: document.getElementById('location-editor'),
+        latitudeInput: document.getElementById('location-latitude-input'),
+        longitudeInput: document.getElementById('location-longitude-input'),
+        altitudeInput: document.getElementById('location-altitude-input'),
+        statusElement: document.getElementById('location-editor-status')
+    };
+}
+
+function setLocationEditorStatus(message, state = 'idle') {
+    const { statusElement } = getLocationEditorElements();
+    if (!statusElement) {
+        return;
+    }
+
+    statusElement.textContent = message;
+    statusElement.dataset.state = state;
+}
+
+function updateLocationEditorStatus() {
+    if (!userLocation) {
+        setLocationEditorStatus('Click the map or enter coordinates to place the observer pin.');
+        return;
+    }
+
+    if (Number.isFinite(userLocation.manualAltitudeM)) {
+        setLocationEditorStatus(
+            `Using manual observer altitude: ${formatInputNumber(userLocation.manualAltitudeM, 1)} m ASL.`,
+            'manual'
+        );
+        return;
+    }
+
+    if (terrainProfile.status === TERRAIN_STATUS.loading && terrainProfile.locationKey === buildTerrainLocationKey(userLocation)) {
+        setLocationEditorStatus('Sampling terrain altitude for the selected point...', 'loading');
+        return;
+    }
+
+    if (isTerrainProfileReadyForUserLocation()) {
+        setLocationEditorStatus(
+            `Using DEM altitude: ${formatInputNumber(terrainProfile.groundElevationM, 1)} m ASL.`,
+            'ready'
+        );
+        return;
+    }
+
+    if (terrainProfile.status === TERRAIN_STATUS.error && terrainProfile.locationKey === buildTerrainLocationKey(userLocation)) {
+        setLocationEditorStatus('Terrain altitude unavailable. Enter an altitude to override.', 'error');
+        return;
+    }
+
+    setLocationEditorStatus('Selected point ready. Enter an altitude if you want to override terrain.');
+}
+
+function populateLocationEditor(location) {
+    const {
+        latitudeInput,
+        longitudeInput,
+        altitudeInput
+    } = getLocationEditorElements();
+
+    if (!latitudeInput || !longitudeInput || !altitudeInput) {
+        return;
+    }
+
+    if (!location) {
+        latitudeInput.value = '';
+        longitudeInput.value = '';
+        altitudeInput.value = '';
+        isLocationEditorDirty = false;
+        updateLocationEditorStatus();
+        return;
+    }
+
+    latitudeInput.value = formatInputNumber(location.latitude, 6);
+    longitudeInput.value = formatInputNumber(location.longitude, 6);
+
+    if (Number.isFinite(location.manualAltitudeM)) {
+        altitudeInput.value = formatInputNumber(location.manualAltitudeM, 1);
+    } else if (isTerrainProfileReadyForUserLocation()) {
+        altitudeInput.value = formatInputNumber(terrainProfile.groundElevationM, 1);
+    } else {
+        altitudeInput.value = '';
+    }
+
+    isLocationEditorDirty = false;
+    updateLocationEditorStatus();
+}
+
+function syncLocationEditorAltitude() {
+    const { altitudeInput } = getLocationEditorElements();
+    if (!altitudeInput || isLocationEditorDirty) {
+        return;
+    }
+
+    if (!userLocation) {
+        updateLocationEditorStatus();
+        return;
+    }
+
+    if (Number.isFinite(userLocation.manualAltitudeM)) {
+        altitudeInput.value = formatInputNumber(userLocation.manualAltitudeM, 1);
+    } else if (isTerrainProfileReadyForUserLocation()) {
+        altitudeInput.value = formatInputNumber(terrainProfile.groundElevationM, 1);
+    } else {
+        altitudeInput.value = '';
+    }
+
+    updateLocationEditorStatus();
+}
+
+function initLocationEditor() {
+    const {
+        form,
+        latitudeInput,
+        longitudeInput,
+        altitudeInput
+    } = getLocationEditorElements();
+
+    if (!form || !latitudeInput || !longitudeInput || !altitudeInput) {
+        return;
+    }
+
+    [latitudeInput, longitudeInput, altitudeInput].forEach(input => {
+        input.addEventListener('input', () => {
+            isLocationEditorDirty = true;
+            setLocationEditorStatus('Draft coordinates ready. Press Drop Pin to place the observer.');
+        });
+    });
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const latitude = Number.parseFloat(latitudeInput.value);
+        const longitude = Number.parseFloat(longitudeInput.value);
+        const altitudeValue = altitudeInput.value.trim();
+        const altitudeM = altitudeValue === '' ? null : Number.parseFloat(altitudeValue);
+
+        if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+            setLocationEditorStatus('Latitude must be a number between -90 and 90.', 'error');
+            return;
+        }
+
+        if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            setLocationEditorStatus('Longitude must be a number between -180 and 180.', 'error');
+            return;
+        }
+
+        if (altitudeValue !== '' && !Number.isFinite(altitudeM)) {
+            setLocationEditorStatus('Altitude must be a valid number in meters above sea level.', 'error');
+            return;
+        }
+
+        const nextLocation = {
+            latitude,
+            longitude
+        };
+
+        if (Number.isFinite(altitudeM)) {
+            nextLocation.manualAltitudeM = altitudeM;
+        }
+
+        placeUserMarker(nextLocation);
+        map.setView([latitude, longitude], Math.max(map.getZoom(), 6));
+        deselectSatellite();
+    });
+
+    populateLocationEditor(userLocation);
 }
 
 function destinationPoint(latitude, longitude, azimuthDeg, distanceM) {
@@ -254,6 +519,8 @@ function initMap() {
         deselectSatellite();
     });
 
+    initCollapsiblePanels();
+    initLocationEditor();
     document.getElementById('current-location-btn').addEventListener('click', useCurrentLocation);
     document.getElementById('toggle-coverage-checkbox').addEventListener('change', updateCoverageLines);
     document.getElementById('toggle-spares-checkbox').addEventListener('change', updateSatellitePositions);
@@ -310,6 +577,7 @@ function initTimelineControls() {
         }
 
         stopTimelinePlayback();
+        isLivePlaybackPaused = false;
         selectedTimelineStep = nextStep;
         isLiveMode = false;
         selectedTimestamp = clampTimestampToTimeline(
@@ -331,6 +599,7 @@ function initTimelineControls() {
         selectedTimelineStep = Math.round((selectedTimestamp - timelineBaseTime) / TIMELINE_STEP_MS);
         selectedTimelineStep = Math.min(TIMELINE_FUTURE_STEPS, Math.max(-TIMELINE_PAST_STEPS, selectedTimelineStep));
         stopTimelinePlayback();
+        isLivePlaybackPaused = false;
         isLiveMode = false;
 
         timeSlider.value = selectedTimelineStep.toString();
@@ -439,10 +708,19 @@ function syncTimelineSlider() {
 
 function updatePlaybackControls() {
     const playbackToggleButton = document.getElementById('playback-toggle-btn');
-    const atPlaybackLimit = !isLiveMode && getSelectedDate().getTime() >= getTimelineBounds(timelineBaseTime).max;
+    const isPlaying = isLiveMode || Boolean(timelinePlaybackTimer);
+    const atPlaybackLimit = (
+        !isPlaying &&
+        !isLivePlaybackPaused &&
+        getSelectedDate().getTime() >= getTimelineBounds(timelineBaseTime).max
+    );
 
-    playbackToggleButton.textContent = timelinePlaybackTimer ? 'Pause' : 'Play';
-    playbackToggleButton.disabled = isLiveMode || atPlaybackLimit;
+    playbackToggleButton.textContent = isPlaying ? 'Pause' : 'Play';
+    playbackToggleButton.title = isLiveMode
+        ? 'Pause live playback'
+        : (isLivePlaybackPaused ? 'Resume live playback' : (isPlaying ? 'Pause playback' : 'Start playback'));
+    playbackToggleButton.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
+    playbackToggleButton.disabled = atPlaybackLimit;
 }
 
 function stopTimelinePlayback() {
@@ -481,15 +759,47 @@ function startTimelinePlayback() {
         return;
     }
 
+    isLivePlaybackPaused = false;
     timelinePlaybackTimer = setInterval(() => {
         stepTimelinePlayback();
     }, PLAYBACK_TICK_MS);
     updatePlaybackControls();
 }
 
+function pauseLivePlayback() {
+    if (!isLiveMode) {
+        updatePlaybackControls();
+        return;
+    }
+
+    if (satelliteRefreshTimer) {
+        clearTimeout(satelliteRefreshTimer);
+        satelliteRefreshTimer = null;
+    }
+
+    timelineBaseTime = Date.now();
+    selectedTimelineStep = 0;
+    selectedTimestamp = timelineBaseTime;
+    isLiveMode = false;
+    isLivePlaybackPaused = true;
+    document.getElementById('time-slider').value = '0';
+    updateTimelineReadout();
+    updateSatellitePositions();
+}
+
 function toggleTimelinePlayback() {
+    if (isLiveMode) {
+        pauseLivePlayback();
+        return;
+    }
+
     if (timelinePlaybackTimer) {
         stopTimelinePlayback();
+        return;
+    }
+
+    if (isLivePlaybackPaused) {
+        returnToLive();
         return;
     }
 
@@ -502,6 +812,7 @@ function returnToLive() {
     selectedTimelineStep = 0;
     selectedTimestamp = null;
     isLiveMode = true;
+    isLivePlaybackPaused = false;
     document.getElementById('time-slider').value = '0';
     updateTimelineReadout();
     updateSatellitePositions();
@@ -538,7 +849,9 @@ function updateTimelineReadout() {
     syncTimelineInputs(selectedDate);
     timelineReadout.textContent = isLiveMode
         ? `Live UTC - ${formatUtcDateTime(selectedDate)} UTC`
-        : `${formatUtcDateTime(selectedDate)} UTC (${formatTimelineOffset(offsetMs)})`;
+        : (isLivePlaybackPaused
+            ? `Paused Live UTC - ${formatUtcDateTime(selectedDate)} UTC`
+            : `${formatUtcDateTime(selectedDate)} UTC (${formatTimelineOffset(offsetMs)})`);
 
     liveTimeButton.disabled = isLiveMode;
     updatePlaybackControls();
@@ -572,7 +885,7 @@ function getTerrainCacheStorageKey(locationKey) {
     return `${TERRAIN_CACHE_KEY_PREFIX}${locationKey}`;
 }
 
-function loadTerrainProfileFromCache(locationKey) {
+function loadTerrainElevationDataFromCache(locationKey) {
     try {
         const cached = localStorage.getItem(getTerrainCacheStorageKey(locationKey));
         if (!cached) {
@@ -585,20 +898,26 @@ function loadTerrainProfileFromCache(locationKey) {
             return null;
         }
 
-        return parsed.profile || null;
+        if (parsed.version !== TERRAIN_CACHE_VERSION || !Array.isArray(parsed.elevations)) {
+            localStorage.removeItem(getTerrainCacheStorageKey(locationKey));
+            return null;
+        }
+
+        return parsed.elevations;
     } catch (error) {
         console.warn('Ignoring invalid terrain cache entry:', error);
         return null;
     }
 }
 
-function saveTerrainProfileToCache(locationKey, profile) {
+function saveTerrainElevationDataToCache(locationKey, elevations) {
     try {
         localStorage.setItem(
             getTerrainCacheStorageKey(locationKey),
             JSON.stringify({
                 cachedAt: Date.now(),
-                profile
+                version: TERRAIN_CACHE_VERSION,
+                elevations
             })
         );
     } catch (error) {
@@ -616,28 +935,26 @@ function updateTerrainStatus() {
 
     if (!userLocation) {
         terrainStatusElement.textContent = 'Terrain LOS: place a point on the map to sample the local horizon.';
-        return;
-    }
-
-    if (terrainProfile.status === TERRAIN_STATUS.loading) {
+    } else if (terrainProfile.status === TERRAIN_STATUS.loading) {
         terrainStatusElement.textContent = 'Terrain LOS: sampling elevation data around the selected point...';
-        return;
-    }
+    } else if (terrainProfile.status === TERRAIN_STATUS.ready) {
+        const usingManualObserverAltitude = Number.isFinite(userLocation.manualAltitudeM);
+        const observerAltitudeLabel = usingManualObserverAltitude
+            ? `manual observer ${terrainProfile.observerSurfaceElevationM.toFixed(0)} m ASL`
+            : `observer ${terrainProfile.observerSurfaceElevationM.toFixed(0)} m ASL`;
 
-    if (terrainProfile.status === TERRAIN_STATUS.ready) {
         terrainStatusElement.textContent =
-            `Terrain LOS: ${terrainProfile.groundElevationM.toFixed(0)} m ASL, ` +
+            `Terrain LOS: ground ${terrainProfile.groundElevationM.toFixed(0)} m ASL, ` +
+            `${observerAltitudeLabel}, ` +
             `${terrainProfile.blockedSectorCount} blocked sectors from DEM horizon sampling.`;
-        return;
-    }
-
-    if (terrainProfile.status === TERRAIN_STATUS.error) {
+    } else if (terrainProfile.status === TERRAIN_STATUS.error) {
         terrainStatusElement.textContent =
             `Terrain LOS: terrain data unavailable (${terrainProfile.errorMessage}). Using geometric horizon only.`;
-        return;
+    } else {
+        terrainStatusElement.textContent = 'Terrain LOS: waiting for the selected point.';
     }
 
-    terrainStatusElement.textContent = 'Terrain LOS: waiting for the selected point.';
+    syncLocationEditorAltitude();
 }
 
 function isTerrainProfileReadyForUserLocation() {
@@ -649,11 +966,23 @@ function isTerrainProfileReadyForUserLocation() {
 }
 
 function getObserverTerrainHeightMeters() {
+    if (userLocation && Number.isFinite(userLocation.manualAltitudeM)) {
+        return userLocation.manualAltitudeM + USER_ANTENNA_HEIGHT_M;
+    }
+
     if (!isTerrainProfileReadyForUserLocation()) {
         return USER_ANTENNA_HEIGHT_M;
     }
 
     return terrainProfile.groundElevationM + USER_ANTENNA_HEIGHT_M;
+}
+
+function getObserverSurfaceAltitudeMeters(location, groundElevationM) {
+    if (location && Number.isFinite(location.manualAltitudeM)) {
+        return location.manualAltitudeM;
+    }
+
+    return groundElevationM;
 }
 
 function getObserverLookAngleContext() {
@@ -754,9 +1083,10 @@ async function fetchElevationProfile(points) {
     return elevationChunks.flat();
 }
 
-function buildTerrainProfile(sampleGrid, elevations, locationKey) {
+function buildTerrainProfile(sampleGrid, elevations, locationKey, location) {
     const groundElevationM = Number.isFinite(elevations[0]) ? elevations[0] : 0;
-    const observerElevationM = groundElevationM + USER_ANTENNA_HEIGHT_M;
+    const observerSurfaceElevationM = getObserverSurfaceAltitudeMeters(location, groundElevationM);
+    const observerElevationM = observerSurfaceElevationM + USER_ANTENNA_HEIGHT_M;
     const horizonElevationsDeg = [];
     let blockedSectorCount = 0;
     let maxHorizonElevationDeg = 0;
@@ -800,6 +1130,7 @@ function buildTerrainProfile(sampleGrid, elevations, locationKey) {
         azimuthStepDeg: TERRAIN_AZIMUTH_STEP_DEG,
         maxDistanceM: TERRAIN_MAX_DISTANCE_M,
         groundElevationM,
+        observerSurfaceElevationM,
         observerElevationM,
         horizonElevationsDeg,
         blockedSectorCount,
@@ -808,10 +1139,9 @@ function buildTerrainProfile(sampleGrid, elevations, locationKey) {
     };
 }
 
-async function computeTerrainProfileForLocation(location, locationKey) {
+async function fetchTerrainElevationDataForLocation(location) {
     const sampleGrid = buildTerrainSampleGrid(location);
-    const elevations = await fetchElevationProfile(sampleGrid.points);
-    return buildTerrainProfile(sampleGrid, elevations, locationKey);
+    return fetchElevationProfile(sampleGrid.points);
 }
 
 async function refreshTerrainProfile(force = false) {
@@ -826,10 +1156,11 @@ async function refreshTerrainProfile(force = false) {
     }
 
     const locationKey = buildTerrainLocationKey(userLocation);
+    const sampleGrid = buildTerrainSampleGrid(userLocation);
     if (!force) {
-        const cachedProfile = loadTerrainProfileFromCache(locationKey);
-        if (cachedProfile) {
-            terrainProfile = cachedProfile;
+        const cachedElevations = loadTerrainElevationDataFromCache(locationKey);
+        if (cachedElevations) {
+            terrainProfile = buildTerrainProfile(sampleGrid, cachedElevations, locationKey, userLocation);
             updateTerrainStatus();
             renderTerrainMask();
             updateCoverageLines();
@@ -861,22 +1192,22 @@ async function refreshTerrainProfile(force = false) {
     clearTerrainMask();
 
     try {
-        let pendingProfilePromise = terrainProfilePromiseCache.get(locationKey);
-        if (!pendingProfilePromise) {
-            pendingProfilePromise = computeTerrainProfileForLocation(userLocation, locationKey)
+        let pendingElevationPromise = terrainProfilePromiseCache.get(locationKey);
+        if (!pendingElevationPromise) {
+            pendingElevationPromise = fetchTerrainElevationDataForLocation(userLocation)
                 .finally(() => {
                     terrainProfilePromiseCache.delete(locationKey);
                 });
-            terrainProfilePromiseCache.set(locationKey, pendingProfilePromise);
+            terrainProfilePromiseCache.set(locationKey, pendingElevationPromise);
         }
 
-        const profile = await pendingProfilePromise;
+        const elevations = await pendingElevationPromise;
         if (requestId !== terrainAnalysisRequestId) {
             return;
         }
 
-        terrainProfile = profile;
-        saveTerrainProfileToCache(locationKey, profile);
+        terrainProfile = buildTerrainProfile(sampleGrid, elevations, locationKey, userLocation);
+        saveTerrainElevationDataToCache(locationKey, elevations);
     } catch (error) {
         if (requestId !== terrainAnalysisRequestId) {
             return;
@@ -1154,7 +1485,7 @@ function deselectSatellite() {
         removeSatelliteCoverageHighlight(selectedSatellite);
     }
     selectedSatellite = null;
-    document.getElementById('satellite-info').innerHTML = '';
+    getPanelContentElement('satellite-info').innerHTML = '';
 }
 
 function updateSatellitePositions() {
@@ -1279,11 +1610,20 @@ function updateSatellitePositions() {
 }
 
 function placeUserMarker(location) {
-    userLocation = location;
+    userLocation = {
+        latitude: location.latitude,
+        longitude: location.longitude
+    };
+
+    if (Number.isFinite(location.manualAltitudeM)) {
+        userLocation.manualAltitudeM = location.manualAltitudeM;
+    }
+
     localStorage.setItem('userLocation', JSON.stringify(userLocation));
+    populateLocationEditor(userLocation);
     updateUserMarker();
     scheduleTerrainProfileRefresh();
-    updateCoverageLines();
+    updateSatellitePositions();
 }
 
 
@@ -1313,7 +1653,7 @@ function updateCoverageLines() {
     const showCoverage = document.getElementById('toggle-coverage-checkbox').checked;
     coverageLines.forEach(line => map.removeLayer(line));
     coverageLines = [];
-    document.getElementById('satellite-list').innerHTML = '';
+    getPanelContentElement('satellite-list').innerHTML = '';
 
     if (!userLocation || !showCoverage) return;
 
@@ -1427,7 +1767,7 @@ function updateSatelliteMarkerIcons() {
 }
 
 function updateSatelliteList(coverageEntries) {
-    const div = document.getElementById('satellite-list');
+    const div = getPanelContentElement('satellite-list');
     div.innerHTML = '';
 
     if (coverageEntries.length === 0) {
@@ -1450,7 +1790,7 @@ function updateSatelliteList(coverageEntries) {
 }
 
 function displaySatelliteInfo(sat) {
-    const div = document.getElementById('satellite-info');
+    const div = getPanelContentElement('satellite-info');
     div.innerHTML = '';
     if (!sat.currentPosition || !sat.geodeticPosition) {
         div.textContent = 'Satellite position unavailable.';
@@ -1510,6 +1850,11 @@ function useCurrentLocation() {
                 latitude: pos.coords.latitude,
                 longitude: pos.coords.longitude
             };
+
+            if (Number.isFinite(pos.coords.altitude)) {
+                userLoc.manualAltitudeM = pos.coords.altitude;
+            }
+
             map.setView([userLoc.latitude, userLoc.longitude], 6);
             placeUserMarker(userLoc);
         }, () => {
