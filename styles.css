@@ -104,11 +104,11 @@ header svg {
 .collapse-edge-left .panel-collapse-tab,
 .collapse-edge-right .panel-collapse-tab {
     top: 50%;
-    transform: translateY(-50%);
+    transform: translateY(-100%);
 }
 
 .collapse-edge-left .panel-collapse-tab {
-    right: calc(var(--panel-tab-offset) * -1);
+    right: calc(var(--panel-tab-offset) * -.5);
 }
 
 .collapse-edge-right .panel-collapse-tab {
@@ -134,7 +134,7 @@ header svg {
 #controls {
     position: absolute;
     top: calc(var(--header-height) + 10px);
-    left: 10px;
+    left: 50px;
     width: 250px;
     padding: 10px;
 }

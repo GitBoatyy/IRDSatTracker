@@ -20,6 +20,7 @@ let terrainRequestCooldownUntil = 0;
 let terrainProfilePromiseCache = new Map();
 let tleRefreshPromise = null;
 let isLocationEditorDirty = false;
+let activeTLEData = null;
 let terrainProfile = {
     status: 'idle',
     locationKey: null
@@ -113,7 +114,8 @@ const TLE_CACHE_TIME_KEY = 'iridium_tle_time';
 const TLE_CACHE_AGE_MS = 8 * 60 * 60 * 1000; // 8 hours
 const TLE_BACKGROUND_REFRESH_AGE_MS = 60 * 60 * 1000; // 1 hour
 const TLE_FETCH_TIMEOUT_MS = 15000;
-const TLE_SOURCE_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=tle';
+const TLE_LOCAL_SOURCE_URL = './tle data/iridium-NEXT.tle';
+const TLE_SOURCE_URL = 'https://www.celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=tle';
 const BASE_MAP_LAYER_STORAGE_KEY = 'selected_base_map_layer';
 const TIMELINE_STEP_SECONDS = 60;
 const TIMELINE_STEP_MS = TIMELINE_STEP_SECONDS * 1000;
@@ -233,13 +235,13 @@ function applyCollapsiblePanelState(panel) {
     }
 
     if (collapseEdge === 'right') {
-        panel.style.transform = `translateX(calc(100% - ${COLLAPSE_TAB_VISIBLE_PX}px))`;
+        panel.style.transform = 'translateX(100%)';
     } else if (collapseEdge === 'bottom') {
-        panel.style.transform = `translateY(calc(100% - ${COLLAPSE_TAB_VISIBLE_PX}px))`;
+        panel.style.transform = 'translateY(100%)';
     } else if (collapseEdge === 'top') {
-        panel.style.transform = `translateY(calc(-100% + ${COLLAPSE_TAB_VISIBLE_PX}px))`;
+        panel.style.transform = 'translateY(-100%)';
     } else {
-        panel.style.transform = `translateX(calc(-100% + ${COLLAPSE_TAB_VISIBLE_PX}px))`;
+        panel.style.transform = 'translateX(-112%)';
     }
 
     updateCollapsiblePanelButton(panel);
@@ -999,13 +1001,13 @@ function updateTerrainStatus() {
     } else if (terrainProfile.status === TERRAIN_STATUS.ready) {
         const usingManualObserverAltitude = Number.isFinite(userLocation.manualAltitudeM);
         const observerAltitudeLabel = usingManualObserverAltitude
-            ? `manual observer ${terrainProfile.observerSurfaceElevationM.toFixed(0)} m ASL`
-            : `observer ${terrainProfile.observerSurfaceElevationM.toFixed(0)} m ASL`;
+            ? `manual alt: ${terrainProfile.observerSurfaceElevationM.toFixed(0)} m ASL`
+            : `alt: ${terrainProfile.observerSurfaceElevationM.toFixed(0)} m ASL`;
 
         terrainStatusElement.textContent =
-            `Terrain LOS: ground ${terrainProfile.groundElevationM.toFixed(0)} m ASL, ` +
+            `Terrain LOS: ${terrainProfile.groundElevationM.toFixed(0)} m ASL, ` +
             `${observerAltitudeLabel}, ` +
-            `${terrainProfile.blockedSectorCount} blocked sectors from DEM horizon sampling.`;
+            `${terrainProfile.blockedSectorCount} blocked sectors from DEM sampling.`;
     } else if (terrainProfile.status === TERRAIN_STATUS.error) {
         terrainStatusElement.textContent =
             `Terrain LOS: terrain data unavailable (${terrainProfile.errorMessage}). Using geometric horizon only.`;
@@ -1393,32 +1395,161 @@ function cacheTLEData(tleData, timestamp = Date.now()) {
     localStorage.setItem(TLE_CACHE_TIME_KEY, timestamp.toString());
 }
 
-async function fetchTLEFromSource() {
+function isValidTLEData(tleData) {
+    return Boolean(tleData && tleData.includes('\n1 ') && tleData.includes('\n2 '));
+}
+
+function normalizeTLEData(tleData) {
+    return tleData.replace(/\r\n/g, '\n').trim();
+}
+
+async function fetchTLEText(url, sourceLabel) {
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => {
         abortController.abort();
     }, TLE_FETCH_TIMEOUT_MS);
 
     try {
-        const response = await fetch(TLE_SOURCE_URL, {
+        const response = await fetch(url, {
+            cache: 'no-store',
             signal: abortController.signal
         });
 
         if (!response.ok) {
-            throw new Error(`Network response was not ok (${response.status} ${response.statusText})`);
+            throw new Error(`${sourceLabel} request failed (${response.status} ${response.statusText})`);
         }
 
-        const data = await response.text();
-        if (!data || !data.includes('\n1 ') || !data.includes('\n2 ')) {
-            throw new Error('TLE response format was invalid');
+        const data = normalizeTLEData(await response.text());
+        if (!isValidTLEData(data)) {
+            throw new Error(`${sourceLabel} TLE response format was invalid`);
         }
 
-        cacheTLEData(data);
-        console.log('Fetched and cached new TLE data from CelesTrak.');
         return data;
     } finally {
         clearTimeout(timeoutId);
     }
+}
+
+async function fetchLocalTLEData() {
+    return fetchTLEText(TLE_LOCAL_SOURCE_URL, 'Local TLE file');
+}
+
+async function fetchTLEFromSource() {
+    return fetchTLEText(TLE_SOURCE_URL, 'CelesTrak');
+}
+
+function getTLERecordKey(name, tleLine1) {
+    const catalogNumber = tleLine1.slice(2, 7).trim();
+    return catalogNumber || name.trim().toUpperCase();
+}
+
+function getTLEEpochTimestamp(tleLine1) {
+    const yearToken = tleLine1.slice(18, 20).trim();
+    const dayToken = tleLine1.slice(20, 32).trim();
+    const year = Number.parseInt(yearToken, 10);
+    const dayOfYear = Number.parseFloat(dayToken);
+
+    if (!Number.isFinite(year) || !Number.isFinite(dayOfYear)) {
+        return Number.NEGATIVE_INFINITY;
+    }
+
+    const fullYear = year >= 57 ? 1900 + year : 2000 + year;
+    const dayIndex = Math.trunc(dayOfYear) - 1;
+    const fractionalDay = dayOfYear - Math.trunc(dayOfYear);
+
+    return Date.UTC(fullYear, 0, 1 + dayIndex) + (fractionalDay * 24 * 60 * 60 * 1000);
+}
+
+function parseTLERecords(tleData) {
+    const lines = normalizeTLEData(tleData).split('\n').filter(line => line.trim().length > 0);
+    const records = [];
+
+    for (let i = 0; i < lines.length; i += 3) {
+        if (!lines[i] || !lines[i + 1] || !lines[i + 2]) {
+            continue;
+        }
+
+        const name = lines[i].trim();
+        const tleLine1 = lines[i + 1].trim();
+        const tleLine2 = lines[i + 2].trim();
+
+        records.push({
+            name,
+            tleLine1,
+            tleLine2,
+            key: getTLERecordKey(name, tleLine1),
+            epochTimestamp: getTLEEpochTimestamp(tleLine1)
+        });
+    }
+
+    return records;
+}
+
+function mergeTLEData(baseTLEData, incomingTLEData) {
+    if (!baseTLEData) {
+        return incomingTLEData;
+    }
+
+    const mergedRecords = parseTLERecords(baseTLEData);
+    const recordIndexByKey = new Map();
+
+    mergedRecords.forEach((record, index) => {
+        recordIndexByKey.set(record.key, index);
+    });
+
+    parseTLERecords(incomingTLEData).forEach(record => {
+        const existingIndex = recordIndexByKey.get(record.key);
+
+        if (existingIndex === undefined) {
+            recordIndexByKey.set(record.key, mergedRecords.length);
+            mergedRecords.push(record);
+            return;
+        }
+
+        if (record.epochTimestamp > mergedRecords[existingIndex].epochTimestamp) {
+            mergedRecords[existingIndex] = record;
+        }
+    });
+
+    return mergedRecords
+        .map(record => `${record.name}\n${record.tleLine1}\n${record.tleLine2}`)
+        .join('\n');
+}
+
+function applyTLEData(tleData, sourceLabel) {
+    const parsedSatellites = parseTLEData(tleData);
+    if (parsedSatellites.length === 0) {
+        console.error(`No satellites were parsed from ${sourceLabel}. Check the TLE data format.`);
+        return false;
+    }
+
+    const selectedSatelliteNumber = selectedSatellite ? selectedSatellite.number : null;
+
+    satelliteData.forEach(sat => {
+        if (sat.marker && map && map.hasLayer(sat.marker)) {
+            map.removeLayer(sat.marker);
+        }
+
+        if (sat.circle && map && map.hasLayer(sat.circle)) {
+            map.removeLayer(sat.circle);
+        }
+    });
+
+    satelliteData = parsedSatellites;
+    activeTLEData = tleData;
+    selectedSatellite = null;
+    updateSatellitePositions();
+
+    if (selectedSatelliteNumber) {
+        const refreshedSelection = satelliteData.find(sat => sat.number === selectedSatelliteNumber);
+        if (refreshedSelection) {
+            highlightSatelliteCoverage(refreshedSelection);
+            displaySatelliteInfo(refreshedSelection);
+        }
+    }
+
+    console.log(`Loaded ${satelliteData.length} satellites from ${sourceLabel}.`);
+    return true;
 }
 
 async function fetchTLEData() {
@@ -1428,37 +1559,88 @@ async function fetchTLEData() {
     const cacheAgeMs = now - cachedTime;
 
     try {
+        const localTLE = await fetchLocalTLEData();
+        cacheTLEData(localTLE);
+        console.log(`Loaded TLE data from local static file: ${TLE_LOCAL_SOURCE_URL}`);
+        return {
+            tleData: localTLE,
+            sourceLabel: 'local static file',
+            shouldRefreshFromRemote: true
+        };
+    } catch (error) {
+        console.warn('Local TLE file unavailable, falling back to cache/network:', error);
+    }
+
+    try {
         if (cachedTLE && cacheAgeMs < TLE_BACKGROUND_REFRESH_AGE_MS) {
             console.log('Loaded TLE data from fresh cache.');
-            return cachedTLE;
+            return {
+                tleData: cachedTLE,
+                sourceLabel: 'cache',
+                shouldRefreshFromRemote: false
+            };
         }
 
         if (cachedTLE && cacheAgeMs < TLE_CACHE_AGE_MS) {
-            if (!tleRefreshPromise) {
-                tleRefreshPromise = fetchTLEFromSource()
-                    .catch(error => {
-                        console.warn('Background TLE refresh failed, keeping cached TLE data:', error);
-                        return cachedTLE;
-                    })
-                    .finally(() => {
-                        tleRefreshPromise = null;
-                    });
-            }
-
             console.log('Loaded TLE data from cache and started background refresh.');
-            return cachedTLE;
+            return {
+                tleData: cachedTLE,
+                sourceLabel: 'cache',
+                shouldRefreshFromRemote: true
+            };
         }
 
-        return await fetchTLEFromSource();
+        const remoteTLE = await fetchTLEFromSource();
+        cacheTLEData(remoteTLE);
+        console.log('Fetched and cached new TLE data from CelesTrak.');
+        return {
+            tleData: remoteTLE,
+            sourceLabel: 'CelesTrak',
+            shouldRefreshFromRemote: false
+        };
     } catch (error) {
         if (cachedTLE) {
             console.warn('Error fetching TLE data, using possibly stale cache:', error);
-            return cachedTLE;
+            return {
+                tleData: cachedTLE,
+                sourceLabel: 'stale cache',
+                shouldRefreshFromRemote: false
+            };
         }
         console.error('Failed to fetch and no cache available:', error);
-        alert('Error fetching TLE data and no cached copy available.');
+        alert(`Error fetching TLE data. Provide ${TLE_LOCAL_SOURCE_URL} or ensure CelesTrak is reachable.`);
         return null;
     }
+}
+
+function startBackgroundTLERefresh(baseTLEData) {
+    if (tleRefreshPromise) {
+        return tleRefreshPromise;
+    }
+
+    tleRefreshPromise = fetchTLEFromSource()
+        .then(remoteTLE => {
+            const mergedTLEData = mergeTLEData(baseTLEData, remoteTLE);
+            cacheTLEData(mergedTLEData);
+
+            if (mergedTLEData !== activeTLEData) {
+                applyTLEData(mergedTLEData, 'background CelesTrak refresh');
+                console.log('Applied newer remote TLE records after initial load.');
+            } else {
+                console.log('Background CelesTrak refresh found no newer TLE records.');
+            }
+
+            return mergedTLEData;
+        })
+        .catch(error => {
+            console.warn('Background TLE refresh failed, keeping current data:', error);
+            return activeTLEData || baseTLEData || null;
+        })
+        .finally(() => {
+            tleRefreshPromise = null;
+        });
+
+    return tleRefreshPromise;
 }
 
 function parseTLEData(tleData) {
@@ -1500,17 +1682,19 @@ function parseTLEData(tleData) {
 }
 
 async function loadSatellites() {
-    const tleData = await fetchTLEData();
-    if (!tleData) {
+    const tleResult = await fetchTLEData();
+    if (!tleResult || !tleResult.tleData) {
         console.error('No TLE data available. Satellites cannot be loaded.');
         return;
     }
-    satelliteData = parseTLEData(tleData);
-    if (satelliteData.length === 0) {
-        console.error('No satellites were parsed. Check the TLE data format.');
+
+    if (!applyTLEData(tleResult.tleData, tleResult.sourceLabel)) {
         return;
     }
-    updateSatellitePositions();
+
+    if (tleResult.shouldRefreshFromRemote) {
+        startBackgroundTLERefresh(tleResult.tleData);
+    }
 }
 
 function removeSatelliteCoverageHighlight(sat) {
