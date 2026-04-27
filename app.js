@@ -114,7 +114,7 @@ const TLE_CACHE_TIME_KEY = 'iridium_tle_time';
 const TLE_CACHE_AGE_MS = 8 * 60 * 60 * 1000; // 8 hours
 const TLE_BACKGROUND_REFRESH_AGE_MS = 60 * 60 * 1000; // 1 hour
 const TLE_FETCH_TIMEOUT_MS = 15000;
-const TLE_LOCAL_SOURCE_URL = './tle data/iridium-NEXT.tle';
+const TLE_LOCAL_SOURCE_URL = './tle_data/iridium-NEXT.tle';
 const TLE_SOURCE_URL = 'https://www.celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=tle';
 const BASE_MAP_LAYER_STORAGE_KEY = 'selected_base_map_layer';
 const TIMELINE_STEP_SECONDS = 60;
