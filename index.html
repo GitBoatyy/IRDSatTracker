@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
 </head>
 <body>
     <header class="app-header">
@@ -48,11 +49,18 @@
                 <span></span>
                 <span></span>
             </button>
+            <button id="theme-toggle-btn" class="theme-toggle-button" type="button" aria-label="Switch to light mode" aria-pressed="true">
+                <span class="theme-toggle-track" aria-hidden="true">
+                    <span class="theme-toggle-thumb"></span>
+                </span>
+                <span class="theme-toggle-label">Dark</span>
+            </button>
         </div>
 
         <section id="controls" class="sidebar-section control-section">
             <div class="section-heading">
-                <h2>Visibility</h2>
+                <h2>Base Map</h2>
+                <button class="section-collapse-toggle" type="button" aria-label="Collapse Base Map" aria-expanded="true">-</button>
             </div>
             <div class="panel-content">
                 <button id="current-location-btn" class="primary-action" type="button">Use Current Location</button>
@@ -60,6 +68,7 @@
                 <div class="control-field">
                     <label for="base-map-select">Base Map</label>
                     <select id="base-map-select">
+                        <option value="dark">Dark</option>
                         <option value="street">Street</option>
                         <option value="topography">Topography</option>
                     </select>
@@ -97,6 +106,7 @@
         <form id="location-editor" class="sidebar-section">
             <div class="section-heading">
                 <h2>Observer Pin</h2>
+                <button class="section-collapse-toggle" type="button" aria-label="Collapse Observer Pin" aria-expanded="true">-</button>
             </div>
             <div class="panel-content">
                 <div class="location-editor-grid">
@@ -121,6 +131,7 @@
         <section id="satellite-info" class="sidebar-section data-section">
             <div class="section-heading">
                 <h2>Selected Sat</h2>
+                <button class="section-collapse-toggle" type="button" aria-label="Collapse Selected Sat" aria-expanded="true">-</button>
             </div>
             <div id="satellite-info-content" class="panel-content data-content"></div>
         </section>
@@ -128,6 +139,7 @@
         <section id="satellite-list" class="sidebar-section data-section">
             <div class="section-heading">
                 <h2>Visibility Queue</h2>
+                <button class="section-collapse-toggle" type="button" aria-label="Collapse Visibility Queue" aria-expanded="true">-</button>
             </div>
             <div id="satellite-list-content" class="panel-content data-content"></div>
         </section>

@@ -8,7 +8,7 @@ let selectedSatellite = null;
 let satelliteRefreshTimer = null;
 let timelinePlaybackTimer = null;
 let baseMapLayers = {};
-let activeBaseMapLayerKey = 'street';
+let activeBaseMapLayerKey = 'dark';
 let timelineBaseTime = Date.now();
 let selectedTimelineStep = 0;
 let isLiveMode = true;
@@ -118,7 +118,16 @@ const TLE_FETCH_TIMEOUT_MS = 15000;
 const TLE_LOCAL_SOURCE_URL = './tle_data/iridium-next.tle';
 const TLE_SOURCE_URL = 'https://www.celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=tle';
 const BASE_MAP_LAYER_STORAGE_KEY = 'selected_base_map_layer';
+const SIDEBAR_COLLAPSED_SECTIONS_STORAGE_KEY = 'sidebar_collapsed_sections';
 const TIMELINE_DOCK_VISIBLE_STORAGE_KEY = 'timeline_dock_visible';
+const THEME_STORAGE_KEY = 'sat_tracker_theme';
+const CONTROL_SETTING_STORAGE_KEYS = {
+    'toggle-coverage-checkbox': 'setting_show_coverage_lines',
+    'toggle-spares-checkbox': 'setting_show_spare_satellites',
+    'toggle-coverage-circles-checkbox': 'setting_show_coverage_footprints',
+    'toggle-sv-id-checkbox': 'setting_show_sv_id_labels',
+    'toggle-terrain-mask-checkbox': 'setting_show_terrain_mask'
+};
 const TIMELINE_STEP_SECONDS = 60;
 const TIMELINE_STEP_MS = TIMELINE_STEP_SECONDS * 1000;
 const TIMELINE_PAST_STEPS = 14 * 24 * 60;
@@ -198,6 +207,7 @@ function setMobileMenuOpen(isOpen) {
     const toggleButton = document.getElementById('mobile-menu-toggle');
     const backdrop = document.getElementById('mobile-menu-backdrop');
 
+    document.body.classList.toggle('sidebar-open', isOpen);
     document.body.classList.toggle('mobile-menu-open', isOpen);
 
     if (toggleButton) {
@@ -222,11 +232,155 @@ function setTimelineDockVisible(isVisible) {
     }
 }
 
+function getSystemTheme() {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+    }
+
+    return 'light';
+}
+
+function getSavedTheme() {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+        return savedTheme;
+    }
+
+    return getSystemTheme();
+}
+
+function setTheme(theme, shouldSyncMap = true, shouldPersist = true) {
+    const activeTheme = theme === 'light' ? 'light' : 'dark';
+    const isDark = activeTheme === 'dark';
+    const toggleButton = document.getElementById('theme-toggle-btn');
+    const toggleLabel = toggleButton ? toggleButton.querySelector('.theme-toggle-label') : null;
+
+    document.body.classList.toggle('theme-light', !isDark);
+    document.body.classList.toggle('theme-dark', isDark);
+    if (shouldPersist) {
+        localStorage.setItem(THEME_STORAGE_KEY, activeTheme);
+    }
+
+    if (toggleButton) {
+        toggleButton.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+        toggleButton.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+
+    if (toggleLabel) {
+        toggleLabel.textContent = isDark ? 'Dark' : 'Light';
+    }
+
+    if (
+        !shouldSyncMap ||
+        !map ||
+        !baseMapLayers.dark ||
+        localStorage.getItem(BASE_MAP_LAYER_STORAGE_KEY)
+    ) {
+        return;
+    }
+
+    if (isDark && activeBaseMapLayerKey !== 'dark') {
+        setBaseMapLayer('dark', false);
+    } else if (!isDark && activeBaseMapLayerKey === 'dark') {
+        setBaseMapLayer('street', false);
+    }
+}
+
+function initThemeToggle() {
+    const toggleButton = document.getElementById('theme-toggle-btn');
+    const hasSavedTheme = localStorage.getItem(THEME_STORAGE_KEY) === 'dark' || localStorage.getItem(THEME_STORAGE_KEY) === 'light';
+
+    setTheme(getSavedTheme(), false, hasSavedTheme);
+
+    if (!toggleButton) {
+        return;
+    }
+
+    toggleButton.addEventListener('click', () => {
+        const nextTheme = document.body.classList.contains('theme-light') ? 'dark' : 'light';
+        setTheme(nextTheme);
+    });
+
+    if (!hasSavedTheme && window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
+            if (localStorage.getItem(THEME_STORAGE_KEY)) {
+                return;
+            }
+
+            setTheme(event.matches ? 'dark' : 'light', true, false);
+        });
+    }
+}
+
+function getSavedCollapsedSidebarSections() {
+    try {
+        return JSON.parse(localStorage.getItem(SIDEBAR_COLLAPSED_SECTIONS_STORAGE_KEY)) || {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function saveCollapsedSidebarSection(sectionId, isCollapsed) {
+    const collapsedSections = getSavedCollapsedSidebarSections();
+    collapsedSections[sectionId] = isCollapsed;
+    localStorage.setItem(SIDEBAR_COLLAPSED_SECTIONS_STORAGE_KEY, JSON.stringify(collapsedSections));
+}
+
+function setSidebarSectionCollapsed(section, isCollapsed, shouldPersist = true) {
+    const heading = section.querySelector('.section-heading h2');
+    const toggleButton = section.querySelector('.section-collapse-toggle');
+    const content = Array.from(section.children).find(child => child.classList.contains('panel-content'));
+
+    if (!toggleButton || !content) {
+        return;
+    }
+
+    const headingText = heading ? heading.textContent.trim() : 'section';
+    section.classList.toggle('is-collapsed', isCollapsed);
+    content.hidden = isCollapsed;
+    toggleButton.textContent = isCollapsed ? '+' : '-';
+    toggleButton.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    toggleButton.setAttribute('aria-label', `${isCollapsed ? 'Expand' : 'Collapse'} ${headingText}`);
+
+    if (shouldPersist && section.id) {
+        saveCollapsedSidebarSection(section.id, isCollapsed);
+    }
+}
+
+function initSidebarCollapsibleSections() {
+    const collapsedSections = getSavedCollapsedSidebarSections();
+
+    document.querySelectorAll('.app-sidebar .sidebar-section').forEach(section => {
+        const toggleButton = section.querySelector('.section-collapse-toggle');
+        if (!toggleButton) {
+            return;
+        }
+
+        const isCollapsed = section.id ? collapsedSections[section.id] === true : false;
+        setSidebarSectionCollapsed(section, isCollapsed, false);
+
+        toggleButton.addEventListener('click', () => {
+            setSidebarSectionCollapsed(section, !section.classList.contains('is-collapsed'));
+        });
+    });
+}
+
+function expandSidebarSectionById(sectionId, shouldPersist = false) {
+    const section = document.getElementById(sectionId);
+
+    if (section) {
+        setSidebarSectionCollapsed(section, false, shouldPersist);
+    }
+}
+
 function initAppShellControls() {
     const menuToggleButton = document.getElementById('mobile-menu-toggle');
     const menuCloseButton = document.getElementById('mobile-menu-close');
     const menuBackdrop = document.getElementById('mobile-menu-backdrop');
     const timelineToggleButton = document.getElementById('timeline-toggle-btn');
+
+    initThemeToggle();
 
     if (menuToggleButton) {
         menuToggleButton.addEventListener('click', () => {
@@ -249,8 +403,8 @@ function initAppShellControls() {
     });
 
     window.addEventListener('resize', () => {
-        if (window.innerWidth > 768) {
-            setMobileMenuOpen(false);
+        if (window.innerWidth > 768 && backdrop) {
+            backdrop.hidden = true;
         }
     });
 
@@ -261,7 +415,8 @@ function initAppShellControls() {
     }
 
     setTimelineDockVisible(localStorage.getItem(TIMELINE_DOCK_VISIBLE_STORAGE_KEY) !== 'false');
-    setMobileMenuOpen(false);
+    setMobileMenuOpen(window.innerWidth > 768);
+    initSidebarCollapsibleSections();
 }
 
 function getMobileStatusSatellite() {
@@ -597,6 +752,11 @@ function delay(ms) {
 
 function createBaseMapLayers() {
     return {
+        dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            maxZoom: 20,
+            subdomains: 'abcd'
+        }),
         street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19
@@ -610,7 +770,11 @@ function createBaseMapLayers() {
 
 function getSavedBaseMapLayerKey() {
     const savedLayerKey = localStorage.getItem(BASE_MAP_LAYER_STORAGE_KEY);
-    return savedLayerKey && baseMapLayers[savedLayerKey] ? savedLayerKey : 'street';
+    if (savedLayerKey && baseMapLayers[savedLayerKey]) {
+        return savedLayerKey;
+    }
+
+    return getSavedTheme() === 'dark' ? 'dark' : 'street';
 }
 
 function syncBaseMapSelector() {
@@ -622,8 +786,8 @@ function syncBaseMapSelector() {
     baseMapSelect.value = activeBaseMapLayerKey;
 }
 
-function setBaseMapLayer(layerKey) {
-    const nextLayerKey = baseMapLayers[layerKey] ? layerKey : 'street';
+function setBaseMapLayer(layerKey, shouldPersist = true) {
+    const nextLayerKey = baseMapLayers[layerKey] ? layerKey : 'dark';
 
     Object.values(baseMapLayers).forEach(layer => {
         if (map.hasLayer(layer)) {
@@ -633,7 +797,9 @@ function setBaseMapLayer(layerKey) {
 
     baseMapLayers[nextLayerKey].addTo(map);
     activeBaseMapLayerKey = nextLayerKey;
-    localStorage.setItem(BASE_MAP_LAYER_STORAGE_KEY, nextLayerKey);
+    if (shouldPersist) {
+        localStorage.setItem(BASE_MAP_LAYER_STORAGE_KEY, nextLayerKey);
+    }
     syncBaseMapSelector();
 }
 
@@ -650,6 +816,43 @@ function initBaseMapSelector() {
     syncBaseMapSelector();
 }
 
+function applyPersistedControlSettings() {
+    Object.entries(CONTROL_SETTING_STORAGE_KEYS).forEach(([controlId, storageKey]) => {
+        const control = document.getElementById(controlId);
+        const savedValue = localStorage.getItem(storageKey);
+
+        if (!control || savedValue === null) {
+            return;
+        }
+
+        control.checked = savedValue === 'true';
+    });
+}
+
+function persistControlSetting(controlId) {
+    const control = document.getElementById(controlId);
+    const storageKey = CONTROL_SETTING_STORAGE_KEYS[controlId];
+
+    if (!control || !storageKey) {
+        return;
+    }
+
+    localStorage.setItem(storageKey, control.checked ? 'true' : 'false');
+}
+
+function addPersistedControlListener(controlId, handler) {
+    const control = document.getElementById(controlId);
+
+    if (!control) {
+        return;
+    }
+
+    control.addEventListener('change', () => {
+        persistControlSetting(controlId);
+        handler();
+    });
+}
+
 function initMap() {
     map = L.map('map', {
         center: [0, 0],
@@ -662,7 +865,12 @@ function initMap() {
     L.control.zoom({ position: 'topright' }).addTo(map);
     baseMapLayers = createBaseMapLayers();
     activeBaseMapLayerKey = getSavedBaseMapLayerKey();
-    setBaseMapLayer(activeBaseMapLayerKey);
+    setBaseMapLayer(activeBaseMapLayerKey, false);
+    setTheme(
+        getSavedTheme(),
+        true,
+        localStorage.getItem(THEME_STORAGE_KEY) === 'dark' || localStorage.getItem(THEME_STORAGE_KEY) === 'light'
+    );
     terrainMaskLayer = L.layerGroup().addTo(map);
 
     map.on('click', (e) => {
@@ -677,12 +885,13 @@ function initMap() {
     initAppShellControls();
     initLocationEditor();
     initBaseMapSelector();
+    applyPersistedControlSettings();
     document.getElementById('current-location-btn').addEventListener('click', useCurrentLocation);
-    document.getElementById('toggle-coverage-checkbox').addEventListener('change', updateCoverageLines);
-    document.getElementById('toggle-spares-checkbox').addEventListener('change', updateSatellitePositions);
-    document.getElementById('toggle-coverage-circles-checkbox').addEventListener('change', updateSatellitePositions);
-    document.getElementById('toggle-sv-id-checkbox').addEventListener('change', updateSatelliteMarkerIcons);
-    document.getElementById('toggle-terrain-mask-checkbox').addEventListener('change', () => {
+    addPersistedControlListener('toggle-coverage-checkbox', updateCoverageLines);
+    addPersistedControlListener('toggle-spares-checkbox', updateSatellitePositions);
+    addPersistedControlListener('toggle-coverage-circles-checkbox', updateSatellitePositions);
+    addPersistedControlListener('toggle-sv-id-checkbox', updateSatelliteMarkerIcons);
+    addPersistedControlListener('toggle-terrain-mask-checkbox', () => {
         renderTerrainMask();
         updateCoverageLines();
         if (selectedSatellite) displaySatelliteInfo(selectedSatellite);
@@ -2161,6 +2370,10 @@ function updateSatelliteList(coverageEntries) {
 }
 
 function displaySatelliteInfo(sat) {
+    if (window.innerWidth <= 768) {
+        expandSidebarSectionById('satellite-info', false);
+    }
+
     const div = getPanelContentElement('satellite-info');
     div.innerHTML = '';
     if (!sat.currentPosition || !sat.geodeticPosition) {
