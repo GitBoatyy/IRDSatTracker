@@ -3,6 +3,7 @@ let satelliteData = [];
 let userMarker = null;
 let userLocation = null;
 let coverageLines = [];
+let latestCoverageEntries = [];
 let selectedSatellite = null;
 let satelliteRefreshTimer = null;
 let timelinePlaybackTimer = null;
@@ -117,14 +118,17 @@ const TLE_FETCH_TIMEOUT_MS = 15000;
 const TLE_LOCAL_SOURCE_URL = './tle_data/iridium-next.tle';
 const TLE_SOURCE_URL = 'https://www.celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=tle';
 const BASE_MAP_LAYER_STORAGE_KEY = 'selected_base_map_layer';
+const TIMELINE_DOCK_VISIBLE_STORAGE_KEY = 'timeline_dock_visible';
 const TIMELINE_STEP_SECONDS = 60;
 const TIMELINE_STEP_MS = TIMELINE_STEP_SECONDS * 1000;
 const TIMELINE_PAST_STEPS = 14 * 24 * 60;
 const TIMELINE_FUTURE_STEPS = 7 * 24 * 60;
 const PLAYBACK_TICK_MS = 1000;
 const PLAYBACK_ADVANCE_MS = 1000;
-const MAX_COVERAGE_DISTANCE_M = 2400000;
-const COLLAPSE_TAB_VISIBLE_PX = 18;
+const IRIDIUM_SERVICE_FOOTPRINT_DIAMETER_M = 4700000;
+const IRIDIUM_SERVICE_FOOTPRINT_RADIUS_M = IRIDIUM_SERVICE_FOOTPRINT_DIAMETER_M / 2;
+const FALLBACK_COVERAGE_RADIUS_M = IRIDIUM_SERVICE_FOOTPRINT_RADIUS_M;
+const COVERAGE_FOOTPRINT_SEGMENTS = 96;
 const TERRAIN_CACHE_KEY_PREFIX = 'terrain_horizon_profile:';
 const TERRAIN_CACHE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const TERRAIN_CACHE_VERSION = 4;
@@ -190,90 +194,143 @@ function getPanelContentElement(panelId) {
     return document.getElementById(`${panelId}-content`) || document.getElementById(panelId);
 }
 
-function getPanelCollapseSymbol(edge, isCollapsed) {
-    if (edge === 'right') {
-        return isCollapsed ? '<' : '>';
+function setMobileMenuOpen(isOpen) {
+    const toggleButton = document.getElementById('mobile-menu-toggle');
+    const backdrop = document.getElementById('mobile-menu-backdrop');
+
+    document.body.classList.toggle('mobile-menu-open', isOpen);
+
+    if (toggleButton) {
+        toggleButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        toggleButton.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
     }
 
-    if (edge === 'bottom') {
-        return isCollapsed ? '^' : 'V';
+    if (backdrop) {
+        backdrop.hidden = !isOpen;
     }
-
-    if (edge === 'top') {
-        return isCollapsed ? 'V' : '^';
-    }
-
-    return isCollapsed ? '>' : '<';
 }
 
-function updateCollapsiblePanelButton(panel) {
-    const toggleButton = panel.querySelector('.panel-collapse-tab');
-    if (!toggleButton) {
-        return;
+function setTimelineDockVisible(isVisible) {
+    const toggleButton = document.getElementById('timeline-toggle-btn');
+
+    document.body.classList.toggle('timeline-collapsed', !isVisible);
+    localStorage.setItem(TIMELINE_DOCK_VISIBLE_STORAGE_KEY, isVisible ? 'true' : 'false');
+
+    if (toggleButton) {
+        toggleButton.textContent = isVisible ? 'Hide Timeline' : 'Show Timeline';
+        toggleButton.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
     }
-
-    const collapseEdge = panel.dataset.collapseEdge || 'left';
-    const isCollapsed = panel.classList.contains('is-collapsed');
-    const panelName = panel.dataset.panelName || panel.id.replace(/-/g, ' ');
-
-    toggleButton.textContent = getPanelCollapseSymbol(collapseEdge, isCollapsed);
-    toggleButton.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
-    toggleButton.setAttribute('aria-label', `${isCollapsed ? 'Expand' : 'Collapse'} ${panelName}`);
-    toggleButton.title = `${isCollapsed ? 'Expand' : 'Collapse'} ${panelName}`;
 }
 
-function applyCollapsiblePanelState(panel) {
-    const collapseEdge = panel.dataset.collapseEdge || 'left';
+function initAppShellControls() {
+    const menuToggleButton = document.getElementById('mobile-menu-toggle');
+    const menuCloseButton = document.getElementById('mobile-menu-close');
+    const menuBackdrop = document.getElementById('mobile-menu-backdrop');
+    const timelineToggleButton = document.getElementById('timeline-toggle-btn');
 
-    panel.classList.remove(
-        'collapse-edge-left',
-        'collapse-edge-right',
-        'collapse-edge-top',
-        'collapse-edge-bottom'
-    );
-    panel.classList.add(`collapse-edge-${collapseEdge}`);
-
-    if (!panel.classList.contains('is-collapsed')) {
-        panel.style.transform = '';
-        updateCollapsiblePanelButton(panel);
-        return;
-    }
-
-    if (collapseEdge === 'right') {
-        panel.style.transform = 'translateX(100%)';
-    } else if (collapseEdge === 'bottom') {
-        panel.style.transform = 'translateY(100%)';
-    } else if (collapseEdge === 'top') {
-        panel.style.transform = 'translateY(-100%)';
-    } else {
-        const tab = panel.querySelector('.panel-collapse-tab');
-        const tabRect = tab.getBoundingClientRect();
-
-        panel.style.transform = `translateX(${-tabRect.left}px)`;
-    }
-
-    updateCollapsiblePanelButton(panel);
-}
-
-function initCollapsiblePanels() {
-    document.querySelectorAll('.collapsible-panel').forEach(panel => {
-        if (panel.dataset.collapseInit === 'true') {
-            return;
-        }
-
-        panel.dataset.collapseInit = 'true';
-        applyCollapsiblePanelState(panel);
-
-        const toggleButton = panel.querySelector('.panel-collapse-tab');
-        if (!toggleButton) {
-            return;
-        }
-
-        toggleButton.addEventListener('click', () => {
-            panel.classList.toggle('is-collapsed');
-            applyCollapsiblePanelState(panel);
+    if (menuToggleButton) {
+        menuToggleButton.addEventListener('click', () => {
+            setMobileMenuOpen(!document.body.classList.contains('mobile-menu-open'));
         });
+    }
+
+    if (menuCloseButton) {
+        menuCloseButton.addEventListener('click', () => setMobileMenuOpen(false));
+    }
+
+    if (menuBackdrop) {
+        menuBackdrop.addEventListener('click', () => setMobileMenuOpen(false));
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            setMobileMenuOpen(false);
+        }
     });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+            setMobileMenuOpen(false);
+        }
+    });
+
+    if (timelineToggleButton) {
+        timelineToggleButton.addEventListener('click', () => {
+            setTimelineDockVisible(document.body.classList.contains('timeline-collapsed'));
+        });
+    }
+
+    setTimelineDockVisible(localStorage.getItem(TIMELINE_DOCK_VISIBLE_STORAGE_KEY) !== 'false');
+    setMobileMenuOpen(false);
+}
+
+function getMobileStatusSatellite() {
+    const visibleEntries = latestCoverageEntries.filter(entry => !entry.terrainBlocked);
+
+    if (selectedSatellite && selectedSatellite.currentPosition) {
+        const selectedEntry = visibleEntries.find(entry => entry.sat === selectedSatellite);
+        if (selectedEntry) {
+            return selectedSatellite;
+        }
+    }
+
+    return visibleEntries.length ? visibleEntries[0].sat : null;
+}
+
+function formatTerrainObstructionAngle(lookAngles, digits = 0) {
+    if (!lookAngles || !isTerrainProfileReadyForUserLocation()) {
+        return '--';
+    }
+
+    return formatDegrees(Math.max(0, lookAngles.horizonElevationDeg), digits);
+}
+
+function getVisibleSatelliteNumberText() {
+    const visibleNumbers = latestCoverageEntries
+        .filter(entry => !entry.terrainBlocked)
+        .map(entry => entry.sat.number);
+
+    return visibleNumbers.length ? visibleNumbers.join(', ') : 'None';
+}
+
+function updateMobileStatus() {
+    const timeElement = document.getElementById('mobile-time-readout');
+    const satElement = document.getElementById('mobile-connected-sat');
+    const visibilityElement = document.getElementById('mobile-visibility');
+    const angleElement = document.getElementById('mobile-angle');
+    const elevationElement = document.getElementById('mobile-elevation');
+
+    if (!timeElement || !satElement || !visibilityElement || !angleElement || !elevationElement) {
+        return;
+    }
+
+    const selectedDate = getSelectedDate();
+    const activeSat = getMobileStatusSatellite();
+
+    timeElement.textContent = isLiveMode
+        ? `Live ${formatUtcTimeValue(selectedDate)} UTC`
+        : `${formatUtcTimeValue(selectedDate)} UTC`;
+
+    if (!activeSat) {
+        satElement.textContent = 'None';
+        visibilityElement.textContent = userLocation ? 'No link' : 'Set pin';
+        angleElement.textContent = '--';
+        elevationElement.textContent = '--';
+        return;
+    }
+
+    satElement.textContent = getVisibleSatelliteNumberText();
+
+    if (!activeSat || !activeSat.lookAngles) {
+        visibilityElement.textContent = userLocation ? 'No link' : 'Set pin';
+        angleElement.textContent = '--';
+        elevationElement.textContent = '--';
+        return;
+    }
+
+    visibilityElement.textContent = describeSatelliteVisibility(activeSat);
+    angleElement.textContent = formatDegrees(activeSat.lookAngles.elevationDeg, 0);
+    elevationElement.textContent = formatTerrainObstructionAngle(activeSat.lookAngles, 0);
 }
 
 function quantizeCoordinate(value, step) {
@@ -504,6 +561,34 @@ function computeGreatCircleDistanceMeters(lat1, lon1, lat2, lon2) {
     return 2 * EARTH_RADIUS_M * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function computeSatelliteCoverageRadiusMeters(altitudeKm) {
+    if (!Number.isFinite(altitudeKm) || altitudeKm <= 0) {
+        return FALLBACK_COVERAGE_RADIUS_M;
+    }
+
+    // Iridium service coverage is antenna-footprint limited; do not draw past the geometric horizon.
+    const orbitalRadiusM = EARTH_RADIUS_M + (altitudeKm * 1000);
+    const horizonCentralAngleRad = Math.acos(EARTH_RADIUS_M / orbitalRadiusM);
+    const geometricHorizonRadiusM = EARTH_RADIUS_M * horizonCentralAngleRad;
+
+    return Math.min(IRIDIUM_SERVICE_FOOTPRINT_RADIUS_M, geometricHorizonRadiusM);
+}
+
+function buildCoverageFootprintPolygon(latitude, longitude, radiusM, centerLongitude) {
+    const points = [];
+    const safeRadiusM = Number.isFinite(radiusM) && radiusM > 0
+        ? radiusM
+        : FALLBACK_COVERAGE_RADIUS_M;
+
+    for (let index = 0; index < COVERAGE_FOOTPRINT_SEGMENTS; index++) {
+        const azimuthDeg = (index / COVERAGE_FOOTPRINT_SEGMENTS) * 360;
+        const point = destinationPoint(latitude, longitude, azimuthDeg, safeRadiusM);
+        points.push([point.latitude, wrapToCenter(point.longitude, centerLongitude)]);
+    }
+
+    return points;
+}
+
 function delay(ms) {
     return new Promise(resolve => {
         setTimeout(resolve, ms);
@@ -570,9 +655,11 @@ function initMap() {
         center: [0, 0],
         zoom: 2,
         minZoom: 2,
+        zoomControl: false,
         worldCopyJump: true  // Infinite horizontal panning
         // No maxBounds!
     });
+    L.control.zoom({ position: 'topright' }).addTo(map);
     baseMapLayers = createBaseMapLayers();
     activeBaseMapLayerKey = getSavedBaseMapLayerKey();
     setBaseMapLayer(activeBaseMapLayerKey);
@@ -587,7 +674,7 @@ function initMap() {
         deselectSatellite();
     });
 
-    initCollapsiblePanels();
+    initAppShellControls();
     initLocationEditor();
     initBaseMapSelector();
     document.getElementById('current-location-btn').addEventListener('click', useCurrentLocation);
@@ -924,6 +1011,7 @@ function updateTimelineReadout() {
 
     liveTimeButton.disabled = isLiveMode;
     updatePlaybackControls();
+    updateMobileStatus();
 }
 
 function scheduleSatelliteRefresh() {
@@ -1708,10 +1796,10 @@ async function loadSatellites() {
 function removeSatelliteCoverageHighlight(sat) {
     if (sat.circle) {
         sat.circle.setStyle({
-            fillColor: '#00FF00',
-            color: '#AAAAAA',
-            fillOpacity: 0.05,
-            weight: 0.3
+            fillColor: '#8dc63f',
+            color: '#5f7687',
+            fillOpacity: 0.045,
+            weight: 0.4
         });
     }
 }
@@ -1723,12 +1811,13 @@ function highlightSatelliteCoverage(sat) {
     selectedSatellite = sat;
     if (sat.circle) {
         sat.circle.setStyle({
-            fillColor: '#ADD8E6',
-            color: '#0000FF',
-            fillOpacity: 0.2,
-            weight: 2
+            fillColor: '#00a6d6',
+            color: '#007da5',
+            fillOpacity: 0.18,
+            weight: 2.4
         });
     }
+    updateMobileStatus();
 }
 
 function deselectSatellite() {
@@ -1737,6 +1826,7 @@ function deselectSatellite() {
     }
     selectedSatellite = null;
     getPanelContentElement('satellite-info').innerHTML = '';
+    updateMobileStatus();
 }
 
 function updateSatellitePositions() {
@@ -1771,6 +1861,7 @@ function updateSatellitePositions() {
         sat.geodeticPosition = { lat: latitude, lng: geodeticLongitude };
         sat.currentTimestamp = selectedTimestamp;
         sat.altitude = altitude;
+        sat.coverageRadiusM = computeSatelliteCoverageRadiusMeters(altitude);
         sat.velocity = Math.sqrt(
             pv.velocity.x * pv.velocity.x +
             pv.velocity.y * pv.velocity.y +
@@ -1833,18 +1924,24 @@ function updateSatellitePositions() {
         }
 
         // --- Coverage circle
+        const coverageFootprint = buildCoverageFootprintPolygon(
+            sat.geodeticPosition.lat,
+            sat.geodeticPosition.lng,
+            sat.coverageRadiusM,
+            mapCenterLng
+        );
+
         if (!sat.circle) {
-            sat.circle = L.circle(newPosition, {
-                radius: MAX_COVERAGE_DISTANCE_M,
-                color: '#AAAAAA',
-                weight: 0.3,
-                fillColor: '#00FF00',
-                fillOpacity: 0.05,
+            sat.circle = L.polygon(coverageFootprint, {
+                color: '#5f7687',
+                weight: 0.4,
+                fillColor: '#8dc63f',
+                fillOpacity: 0.045,
                 interactive: false
             });
             if (showCircle) sat.circle.addTo(map);
         } else {
-            sat.circle.setLatLng(newPosition);
+            sat.circle.setLatLngs(coverageFootprint);
             if (showCircle) {
                 if (!map.hasLayer(sat.circle)) sat.circle.addTo(map);
             } else {
@@ -1891,9 +1988,9 @@ function updateUserMarker() {
             title: 'Your Location',
             icon: L.divIcon({
                 className: '',
-                html: `<svg width="16" height="16"><circle cx="8" cy="8" r="7" fill="#F00" stroke="#FFF" stroke-width="2"/></svg>`,
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+                html: `<svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="#00a6d6" fill-opacity="0.22"/><circle cx="11" cy="11" r="6" fill="#f3a712" stroke="#fff" stroke-width="3"/></svg>`,
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
             })
         }).addTo(map);
     }
@@ -1906,7 +2003,11 @@ function updateCoverageLines() {
     coverageLines = [];
     getPanelContentElement('satellite-list').innerHTML = '';
 
-    if (!userLocation || !showCoverage) return;
+    if (!userLocation || !showCoverage) {
+        latestCoverageEntries = [];
+        updateMobileStatus();
+        return;
+    }
 
     const mapCenterLng = map.getCenter().lng;
     const wrappedUserLng = wrapToCenter(userLocation.longitude, mapCenterLng);
@@ -1929,7 +2030,9 @@ function updateCoverageLines() {
             sat.geodeticPosition.lng
         );
 
-        if (dist > MAX_COVERAGE_DISTANCE_M || sat.lookAngles.elevationDeg <= 0) {
+        const coverageRadiusM = sat.coverageRadiusM || FALLBACK_COVERAGE_RADIUS_M;
+
+        if (dist > coverageRadiusM || sat.lookAngles.elevationDeg <= 0) {
             return;
         }
 
@@ -1951,9 +2054,9 @@ function updateCoverageLines() {
 
     coverageEntries.forEach(entry => {
         const line = L.polyline([entry.satLatLng, userLatLng], {
-            color: entry.terrainBlocked ? '#b45309' : '#166534',
-            weight: entry.terrainBlocked ? 2 : 3,
-            opacity: entry.terrainBlocked ? 0.65 : 0.9,
+            color: entry.terrainBlocked ? '#f3a712' : '#00a6d6',
+            weight: entry.terrainBlocked ? 2.2 : 3,
+            opacity: entry.terrainBlocked ? 0.72 : 0.86,
             dashArray: entry.terrainBlocked ? '8 6' : null
         }).addTo(map);
         coverageLines.push(line);
@@ -1966,6 +2069,9 @@ function updateCoverageLines() {
 function createSatelliteListSection(title, entries, includeHorizon) {
     const section = document.createElement('div');
     section.className = 'satellite-section';
+    if (includeHorizon) {
+        section.classList.add('is-blocked');
+    }
 
     const heading = document.createElement('h4');
     heading.textContent = title;
@@ -1974,9 +2080,19 @@ function createSatelliteListSection(title, entries, includeHorizon) {
     const list = document.createElement('ul');
     entries.forEach(entry => {
         const li = document.createElement('li');
-        li.textContent = includeHorizon
-            ? `${entry.sat.name} (${formatDegrees(entry.elevationDeg)}, horizon ${formatDegrees(entry.horizonElevationDeg)})`
-            : `${entry.sat.name} (${formatDegrees(entry.elevationDeg)})`;
+        li.className = 'satellite-list-item';
+
+        const name = document.createElement('strong');
+        name.textContent = entry.sat.number;
+        name.title = entry.sat.name;
+        li.appendChild(name);
+
+        const detail = document.createElement('span');
+        const terrainObstruction = formatTerrainObstructionAngle(entry.sat.lookAngles, 0);
+        detail.textContent = `Sat ${formatDegrees(entry.elevationDeg, 0)} / Terrain ${terrainObstruction}`;
+        detail.title = detail.textContent;
+        li.appendChild(detail);
+
         list.appendChild(li);
     });
     section.appendChild(list);
@@ -2020,11 +2136,13 @@ function updateSatelliteMarkerIcons() {
 function updateSatelliteList(coverageEntries) {
     const div = getPanelContentElement('satellite-list');
     div.innerHTML = '';
+    latestCoverageEntries = coverageEntries.slice();
 
     if (coverageEntries.length === 0) {
         div.textContent = isTerrainProfileReadyForUserLocation()
             ? 'No satellites are visible inside the coverage footprint above the terrain mask.'
             : 'No satellites cover this location above the geometric horizon.';
+        updateMobileStatus();
         return;
     }
 
@@ -2038,6 +2156,8 @@ function updateSatelliteList(coverageEntries) {
     if (blockedEntries.length) {
         div.appendChild(createSatelliteListSection('Terrain Blocked', blockedEntries, true));
     }
+
+    updateMobileStatus();
 }
 
 function displaySatelliteInfo(sat) {
@@ -2045,6 +2165,7 @@ function displaySatelliteInfo(sat) {
     div.innerHTML = '';
     if (!sat.currentPosition || !sat.geodeticPosition) {
         div.textContent = 'Satellite position unavailable.';
+        updateMobileStatus();
         return;
     }
     const svMapping = getSatelliteSvMapping(sat);
@@ -2054,8 +2175,8 @@ function displaySatelliteInfo(sat) {
     const infoList = document.createElement('ul');
     const shownAt = sat.currentTimestamp ? new Date(sat.currentTimestamp) : getSelectedDate();
     const infoItems = [
-        { label: 'Latitude', value: `${sat.currentPosition.lat.toFixed(4)}°` },
-        { label: 'Longitude', value: `${sat.currentPosition.lng.toFixed(4)}°` },
+        { label: 'Latitude', value: formatDegrees(sat.geodeticPosition.lat, 4) },
+        { label: 'Longitude', value: formatDegrees(sat.geodeticPosition.lng, 4) },
         { label: 'Altitude', value: `${sat.altitude.toFixed(2)} km` },
         { label: 'Velocity', value: `${(sat.velocity * 3600).toFixed(2)} km/h` },
         { label: 'Satellite Number', value: sat.number },
@@ -2067,20 +2188,17 @@ function displaySatelliteInfo(sat) {
         }
     ];
 
-    infoItems[0].value = formatDegrees(sat.geodeticPosition.lat, 4);
-    infoItems[1].value = formatDegrees(sat.geodeticPosition.lng, 4);
-
     if (sat.lookAngles) {
         infoItems.push(
             { label: 'Azimuth', value: formatDegrees(sat.lookAngles.azimuthDeg, 1) },
-            { label: 'Elevation', value: formatDegrees(sat.lookAngles.elevationDeg, 1) },
+            { label: 'Look Angle', value: formatDegrees(sat.lookAngles.elevationDeg, 1) },
             { label: 'Range', value: `${sat.lookAngles.rangeKm.toFixed(0)} km` },
             { label: 'Visibility', value: describeSatelliteVisibility(sat) }
         );
 
         if (isTerrainProfileReadyForUserLocation()) {
             infoItems.push(
-                { label: 'Terrain Horizon', value: formatDegrees(sat.lookAngles.horizonElevationDeg, 1) },
+                { label: 'Terrain Obstruction', value: formatDegrees(sat.lookAngles.horizonElevationDeg, 1) },
                 { label: 'LOS Clearance', value: formatDegrees(sat.lookAngles.clearanceDeg, 1) }
             );
         }
@@ -2088,10 +2206,20 @@ function displaySatelliteInfo(sat) {
 
     infoItems.forEach(item => {
         const li = document.createElement('li');
-        li.textContent = `${item.label}: ${item.value}`;
+        li.className = 'info-item';
+
+        const label = document.createElement('span');
+        label.textContent = item.label;
+        li.appendChild(label);
+
+        const value = document.createElement('strong');
+        value.textContent = item.value;
+        li.appendChild(value);
+
         infoList.appendChild(li);
     });
     div.appendChild(infoList);
+    updateMobileStatus();
 }
 
 function useCurrentLocation() {
@@ -2118,9 +2246,10 @@ function useCurrentLocation() {
 
 function createSatelliteIcon(satelliteNumber) {
     const svgContent = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
-        <circle cx="20" cy="20" r="18" fill="#0000FF" fill-opacity="0.7" />
-        <text x="20" y="25" font-size="18" fill="#FFF" text-anchor="middle" font-weight="bold">${satelliteNumber}</text>
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="18" fill="#253746" fill-opacity="0.92" />
+        <circle cx="20" cy="20" r="16" fill="none" stroke="#00a6d6" stroke-width="2.5" />
+        <text x="20" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#fff" text-anchor="middle" font-weight="800">${satelliteNumber}</text>
     </svg>`;
     return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svgContent);
 }

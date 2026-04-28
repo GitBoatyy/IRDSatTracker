@@ -2,20 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Satellite Tracking Application</title>
-    <!-- Link to your CSS file -->
+    <title>SKYTRAC Iridium Satellite Tracker</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <!-- Meta tags for responsiveness -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-
-    <!-- Header Bar -->
-    <header>
-        <a href="https://skytrac.ca/" target="_blank">
-            <!-- Your SVG Logo -->
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 756 174">
+    <header class="app-header">
+        <a class="brand-link" href="https://skytrac.ca/" target="_blank" rel="noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 756 174" aria-label="SKYTRAC">
                 <style type="text/css">
                     .st0{fill:#253746;}
                 </style>
@@ -36,92 +31,134 @@
                 </g>
             </svg>
         </a>
+        <div class="app-title" aria-label="Application name">Iridium Satellite Tracker</div>
+        <button id="mobile-menu-toggle" class="icon-button mobile-menu-button" type="button" aria-controls="app-sidebar" aria-expanded="false" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </header>
 
-    <!-- Main Content -->
     <div id="map"></div>
-    <!-- Satellite List Container -->
-    <div id="satellite-list" class="collapsible-panel" data-collapse-edge="right">
-        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse satellite list"></button>
-        <div id="satellite-list-content" class="panel-content"></div>
-    </div>
-    <!-- Satellite Info Container -->
-    <div id="satellite-info" class="collapsible-panel" data-collapse-edge="left">
-        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse satellite details"></button>
-        <div id="satellite-info-content" class="panel-content"></div>
-    </div>
+    <div id="mobile-menu-backdrop" class="mobile-menu-backdrop" hidden></div>
 
-    <!-- Controls Container -->
-    <div id="controls" class="collapsible-panel" data-collapse-edge="left">
-        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse controls"></button>
-        <div class="panel-content">
-            <button id="current-location-btn">Use Current Location</button>
-
-            <div class="control-field">
-                <label for="base-map-select">Base Map</label>
-                <select id="base-map-select">
-                    <option value="street">Street</option>
-                    <option value="topography">Topography</option>
-                </select>
-            </div>
-
-            <!-- Toggle Coverage Lines -->
-            <div id="coverage-toggle">
-                <input type="checkbox" id="toggle-coverage-checkbox" checked>
-                <label for="toggle-coverage-checkbox">Coverage Lines</label>
-            </div>
-
-            <!-- Toggle Spare Satellites -->
-            <div id="spares-toggle">
-                <input type="checkbox" id="toggle-spares-checkbox">
-                <label for="toggle-spares-checkbox">Spare Satellites</label>
-            </div>
-
-            <!-- Toggle Coverage Circles -->
-            <div id="coverage-circles-toggle">
-                <input type="checkbox" id="toggle-coverage-circles-checkbox" checked>
-                <label for="toggle-coverage-circles-checkbox">Coverage Circles</label>
-            </div>
-
-            <div id="sv-id-toggle">
-                <input type="checkbox" id="toggle-sv-id-checkbox">
-                <label for="toggle-sv-id-checkbox">SV ID</label>
-            </div>
-
-            <div id="terrain-mask-toggle">
-                <input type="checkbox" id="toggle-terrain-mask-checkbox" checked>
-                <label for="toggle-terrain-mask-checkbox">Terrain Mask</label>
-            </div>
-
-            <div id="terrain-status" aria-live="polite"></div>
+    <aside id="app-sidebar" class="app-sidebar" aria-label="Satellite tracker controls">
+        <div class="sidebar-topline">
+            <button id="mobile-menu-close" class="icon-button sidebar-close-button" type="button" aria-label="Close menu">
+                <span></span>
+                <span></span>
+            </button>
         </div>
-    </div>
 
-    <form id="location-editor" class="collapsible-panel" data-collapse-edge="right">
-        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse observer pin editor"></button>
-        <div class="panel-content">
-            <h3>Observer Pin</h3>
-            <div class="location-editor-grid">
-                <label class="location-field" for="location-latitude-input">
-                    <span>Latitude</span>
-                    <input type="number" id="location-latitude-input" step="any" min="-90" max="90" placeholder="49.2827">
-                </label>
-                <label class="location-field" for="location-longitude-input">
-                    <span>Longitude</span>
-                    <input type="number" id="location-longitude-input" step="any" min="-180" max="180" placeholder="-123.1207">
-                </label>
-                <label class="location-field" for="location-altitude-input">
-                    <span>Altitude (m ASL)</span>
-                    <input type="number" id="location-altitude-input" step="any" placeholder="Optional">
-                </label>
+        <section id="controls" class="sidebar-section control-section">
+            <div class="section-heading">
+                <h2>Visibility</h2>
             </div>
-            <button id="location-apply-btn" type="submit">Drop Pin</button>
-            <div id="location-editor-status" aria-live="polite"></div>
-        </div>
-    </form>
+            <div class="panel-content">
+                <button id="current-location-btn" class="primary-action" type="button">Use Current Location</button>
 
-    <div id="timeline-dock" class="collapsible-panel" data-collapse-edge="bottom">
-        <button class="panel-collapse-tab" type="button" aria-expanded="true" aria-label="Collapse timeline"></button>
+                <div class="control-field">
+                    <label for="base-map-select">Base Map</label>
+                    <select id="base-map-select">
+                        <option value="street">Street</option>
+                        <option value="topography">Topography</option>
+                    </select>
+                </div>
+
+                <div id="coverage-toggle" class="switch-row">
+                    <input type="checkbox" id="toggle-coverage-checkbox" checked>
+                    <label for="toggle-coverage-checkbox">Coverage Lines</label>
+                </div>
+
+                <div id="spares-toggle" class="switch-row">
+                    <input type="checkbox" id="toggle-spares-checkbox">
+                    <label for="toggle-spares-checkbox">Spare Satellites</label>
+                </div>
+
+                <div id="coverage-circles-toggle" class="switch-row">
+                    <input type="checkbox" id="toggle-coverage-circles-checkbox" checked>
+                    <label for="toggle-coverage-circles-checkbox">Coverage Footprints</label>
+                </div>
+
+                <div id="sv-id-toggle" class="switch-row">
+                    <input type="checkbox" id="toggle-sv-id-checkbox">
+                    <label for="toggle-sv-id-checkbox">SV ID Labels</label>
+                </div>
+
+                <div id="terrain-mask-toggle" class="switch-row">
+                    <input type="checkbox" id="toggle-terrain-mask-checkbox" checked>
+                    <label for="toggle-terrain-mask-checkbox">Terrain Mask</label>
+                </div>
+
+                <div id="terrain-status" class="status-message" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <form id="location-editor" class="sidebar-section">
+            <div class="section-heading">
+                <h2>Observer Pin</h2>
+            </div>
+            <div class="panel-content">
+                <div class="location-editor-grid">
+                    <label class="location-field" for="location-latitude-input">
+                        <span>Latitude</span>
+                        <input type="number" id="location-latitude-input" step="any" min="-90" max="90" placeholder="49.2827">
+                    </label>
+                    <label class="location-field" for="location-longitude-input">
+                        <span>Longitude</span>
+                        <input type="number" id="location-longitude-input" step="any" min="-180" max="180" placeholder="-123.1207">
+                    </label>
+                    <label class="location-field" for="location-altitude-input">
+                        <span>Altitude (m ASL)</span>
+                        <input type="number" id="location-altitude-input" step="any" placeholder="Optional">
+                    </label>
+                </div>
+                <button id="location-apply-btn" class="secondary-action" type="submit">Drop Pin</button>
+                <div id="location-editor-status" class="status-message" aria-live="polite"></div>
+            </div>
+        </form>
+
+        <section id="satellite-info" class="sidebar-section data-section">
+            <div class="section-heading">
+                <h2>Selected Sat</h2>
+            </div>
+            <div id="satellite-info-content" class="panel-content data-content"></div>
+        </section>
+
+        <section id="satellite-list" class="sidebar-section data-section">
+            <div class="section-heading">
+                <h2>Visibility Queue</h2>
+            </div>
+            <div id="satellite-list-content" class="panel-content data-content"></div>
+        </section>
+    </aside>
+
+    <section id="mobile-status" class="mobile-status" aria-label="Current satellite status">
+        <div>
+            <span>Timeline</span>
+            <strong id="mobile-time-readout">Live</strong>
+        </div>
+        <div>
+            <span>Visible Sat</span>
+            <strong id="mobile-connected-sat">None</strong>
+        </div>
+        <div>
+            <span>Visibility</span>
+            <strong id="mobile-visibility">Waiting</strong>
+        </div>
+        <div>
+            <span>Look Angle</span>
+            <strong id="mobile-angle">--</strong>
+        </div>
+        <div>
+            <span>Terrain</span>
+            <strong id="mobile-elevation">--</strong>
+        </div>
+    </section>
+
+    <button id="timeline-toggle-btn" class="timeline-toggle" type="button" aria-controls="timeline-dock" aria-expanded="true">Hide Timeline</button>
+
+    <div id="timeline-dock" class="timeline-dock">
         <div class="panel-content">
             <div id="timeline-inputs">
                 <div class="timeline-field">
@@ -146,11 +183,9 @@
             </div>
         </div>
     </div>
-    <!-- ... your other <head> content ... -->
+
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <!-- Satellite.js remains -->
     <script src="https://unpkg.com/satellite.js@4.0.0/dist/satellite.min.js"></script>
-    <!-- Your custom app.js remains -->
     <script src="app.js"></script>
 </body>
 </html>
