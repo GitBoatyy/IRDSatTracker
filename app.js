@@ -225,7 +225,12 @@ function updateCollapsiblePanelButton(panel) {
 function applyCollapsiblePanelState(panel) {
     const collapseEdge = panel.dataset.collapseEdge || 'left';
 
-    panel.classList.remove('collapse-edge-left', 'collapse-edge-right', 'collapse-edge-top', 'collapse-edge-bottom');
+    panel.classList.remove(
+        'collapse-edge-left',
+        'collapse-edge-right',
+        'collapse-edge-top',
+        'collapse-edge-bottom'
+    );
     panel.classList.add(`collapse-edge-${collapseEdge}`);
 
     if (!panel.classList.contains('is-collapsed')) {
@@ -241,7 +246,10 @@ function applyCollapsiblePanelState(panel) {
     } else if (collapseEdge === 'top') {
         panel.style.transform = 'translateY(-100%)';
     } else {
-        panel.style.transform = 'translateX(-112%)';
+        const tab = panel.querySelector('.panel-collapse-tab');
+        const tabRect = tab.getBoundingClientRect();
+
+        panel.style.transform = `translateX(${-tabRect.left}px)`;
     }
 
     updateCollapsiblePanelButton(panel);

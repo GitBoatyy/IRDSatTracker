@@ -104,7 +104,7 @@ header svg {
 .collapse-edge-left .panel-collapse-tab,
 .collapse-edge-right .panel-collapse-tab {
     top: 50%;
-    transform: translateY(-100%);
+    transform: translateY(-50%);
 }
 
 .collapse-edge-left .panel-collapse-tab {
